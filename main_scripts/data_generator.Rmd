@@ -1,0 +1,5118 @@
+---
+title: "Initial abundances and catch data"
+author: "Antoine Ricouard"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Objective
+
+This script has the following goals :
+
+-   generating abundance for each year, for each species, to be used as initial conditions for simulation
+
+-   generating recruitment by year
+
+-   generating catch, landings and other data sets for each year, for each species, to be used in calibration of accessibility and validation
+
+For consistency, and also because they often use the same inputs, these three operation should be carried out jointly.
+
+Here we give the detail of their executions species by species, with all necessary explanations.
+
+# General settings
+
+Here we load all necessary packages and functions:
+
+```{r, warning=FALSE, message=FALSE}
+library(FLCore)
+library(lattice)
+library(iterators)
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(cubelyr)
+library(FLXSA)
+library(here)
+```
+
+We have to set a number of paths to input and ouput files. First, the path to raw data, used as inputs for the production of our datasets :
+
+```{r}
+assess_path <- paste0(here(),'/input_data/stock_objects')
+intercatchAL_extraction_path <- paste0(here(),'/input_data/mixed_datasets/ExtraAge_lengthStruc.rds') 
+SACROIS_path <- paste0(here(),'/input_data/mixed_datasets/df_eflalo_all_fleets2010_2022.rds')
+interCROIS_path <- paste0(here(),'/input_data/mixed_datasets/df_sacrois_key_species_ag_foreign_2022.rds')
+vigier_path <- paste0(here(),'/input_data/vigier2022')
+```
+
+Then, the path to save initial conditions:
+
+```{r}
+init_save_path <- paste0(here(),'/reference_data/initial_abundance')
+```
+
+The recruitment files:
+
+```{r}
+recruit_save_path <- paste0(here(),'/reference_data/recruitment')
+```
+
+And the calibration/validation data:
+
+```{r}
+ssb_save_path <- paste0(here(),'/reference_data/ssb')
+F_save_path <- paste0(here(),'/reference_data/F_bygroup')
+catch_by_groupisis_path  <-  paste0(here(),'/reference_data/catch_by_groupisis')
+catch_by_country_path  <-  paste0(here(),'/reference_data/catch_by_country')
+catch_country_groupisis_path  <-  paste0(here(),'/reference_data/catch_by_country_by_groupisis')
+catch_by_metier_path  <-  paste0(here(),'/reference_data/land_by_metier')
+catch_by_season_path  <-  paste0(here(),'/reference_data/catch_by_season')
+catch_season_groupisis_path  <-  paste0(here(),'/reference_data/catch_by_season_by_groupisis')
+land_by_country_path <-  paste0(here(),'/reference_data/land_by_country')
+land_by_season_path <-  paste0(here(),'/reference_data/land_by_season')
+land_by_metier_season_path <-  paste0(here(),'/reference_data/land_by_metier_by_season')
+land_by_species_path <- paste0(here(),'/reference_data/land_by_species')
+land_by_species_season_path <- paste0(here(),'/reference_data/land_by_species_by_season')
+```
+
+Set the years of the analysis:
+
+```{r}
+years <- 2015:2022
+```
+
+And the species ensemble by their FAO code
+
+```{r}
+spp_set <- c('HKE','MEG','MNZ','NEP','RJC','RJN','SOL')
+```
+
+# Multispecific datasets
+
+Here we perform the preparation of the dataset of catches by country and by seasons, from a modified extract of intercatch data:
+
+```{r}
+Catch_by_country_agelength <- data.frame(readRDS(intercatchAL_extraction_path)) %>%
+  ungroup() %>%
+  drop_na() %>%
+  filter(CatchCat=="Landings"|CatchCat=="Discards") %>%
+  mutate(Country = case_when(Country == "Spain" ~ "ESP",
+                             Country == "UK (England)" ~ "UK",
+                             Country == "UK (Scotland)" ~ "UK",
+                             Country == "Belgium" ~ "BEL",
+                             Country == "France" ~ "FRA")) %>%
+  filter(Country %in% c("ESP","UK","BEL","FRA")) %>%
+  mutate(Catch_kg = n * MeanWeight_in_g / 1000) %>%
+  select(Datayear,Stock,Country,n,Catch_kg,ageorlength) %>%
+  rename(Catch_n = n, year = Datayear) %>%
+  group_by(year,Stock,Country,ageorlength) %>%
+  summarise_all(sum) %>%
+  ungroup()
+
+Catch_by_season_agelength <- data.frame(readRDS(intercatchAL_extraction_path)) %>%
+  ungroup() %>%
+  drop_na() %>%
+  filter(Season %in% c(1,2,3,4)) %>%
+  filter(CatchCat=="Landings"|CatchCat=="Discards") %>%
+  mutate(Country = case_when(Country == "Spain" ~ "ESP",
+                             Country == "UK (England)" ~ "UK",
+                             Country == "UK (Scotland)" ~ "UK",
+                             Country == "Belgium" ~ "BEL",
+                             Country == "France" ~ "FRA")) %>%
+  filter(Country %in% c("ESP","UK","BEL","FRA")) %>%
+  mutate(Catch_kg = n * MeanWeight_in_g / 1000) %>%
+  select(Datayear,Stock,Season,n,Catch_kg,ageorlength) %>%
+  rename(Catch_n = n, year = Datayear) %>%
+  group_by(year,Stock,Season,ageorlength) %>%
+  summarise_all(sum) %>%
+  ungroup()
+
+Catch_by_country <- Catch_by_country_agelength %>%
+  select(-ageorlength) %>%
+  group_by(year,Stock,Country) %>%
+  summarise_all(sum) %>%
+  ungroup()
+
+Catch_by_season <- Catch_by_season_agelength %>%
+  select(-ageorlength) %>%
+  group_by(year,Stock,Season) %>%
+  summarise_all(sum) %>%
+  ungroup()
+
+```
+
+Here we perform the preparation of the dataset of landings by country and by seasons, from SACROIS dataset (for French fleets) and intercatch data (for foreigners) and SACROIS data for french fleets. The process includes a adhoc recoding of metier name for french fleets larger than 12m):
+
+```{r,message=FALSE}
+land_fleet_ctry_met_seas_FR <- data.frame(readRDS(SACROIS_path)) %>% 
+   mutate(metier_isis = fct_recode(metier_isis,
+                                   "G_HKE" = "G_MIX",
+                                   "G_HKE" = "G_1",
+                                   "G_LOW" = "G_low_activity_1",
+                                   "L_HKE" = "L_3",
+                                   "M_HKE" = "M_1",
+                                   "M_LOW" = "M_low_activity_1",
+                                   "O_NEP" = "O_5"))  %>%
+  filter(!grepl("metier_OTH",metier_isis)) %>%
+  rename(year=REF_YEAR) %>%
+  filter(grepl("bob_",fleet_isis)|grepl("other-",fleet_isis)|grepl("-10-",fleet_isis)) %>%
+  filter(year %in% years) %>%
+  mutate(Season = 1 + (as.numeric(MONTH)-1)%/%3,
+         Country = "FRA",
+         fleet_group = if_else(grepl("-10-",fleet_isis),"inf12","sup12")) %>%
+  select(year,Season,Country,fleet_group,metier_isis,strategy_isis,LE_KG_HKE,LE_KG_MNZ,LE_KG_RJC,LE_KG_RJN,LE_KG_SOL,LE_KG_MEG,LE_KG_NEP) %>%
+  group_by(year,Season,Country,fleet_group,metier_isis,strategy_isis) %>%
+  summarise_all(sum) %>%
+  ungroup() %>%
+  pivot_longer(LE_KG_HKE:LE_KG_NEP,names_to = "species",values_to="Landings_kg") %>%
+  mutate(species=word(species,sep="_",3)) %>%
+  rename(fleet_isis = strategy_isis)
+  
+land_fleet_ctry_met_seas_oth <- data.frame(readRDS(interCROIS_path)) %>%
+  rename(year=REF_YEAR, Season=QUARTER, species=ESP_COD_FAO) %>%
+  mutate(species=if_else(species=="MON","MNZ",species)) %>%
+  filter(species %in% spp_set) %>%
+  mutate(Country = case_when(grepl("BE",fleet_isis) ~ "BEL",
+                             grepl("ES",fleet_isis) ~ "ESP",
+                             grepl("UK",fleet_isis) ~ "UK",
+                             !(grepl("BE",fleet_isis)|
+                                 grepl("ES",fleet_isis)|
+                                 grepl("UK",fleet_isis)) ~ "FRA")) %>%
+  filter(Country !='FRA')%>%
+  mutate(fleet_group =  'foreign') %>%
+  mutate(metier_isis = str_sub(metier_isis,1,7)) %>%
+  group_by(year,Season,species,fleet_group,fleet_isis,metier_isis,Country) %>%
+  summarise(Landings_kg = sum(landings)) %>%
+  ungroup()
+
+land_fleet_ctry_met_seas <- rbind(land_fleet_ctry_met_seas_oth, land_fleet_ctry_met_seas_FR)
+```
+
+
+# Exports {.tabset}
+
+## Analysis species by species {.tabset}
+
+### *Lepidorhombus whiffiagonis* {.tabset}
+
+Here, we load the stock object associated to assessment of *Lepidorhombus whiffiagonis*:
+
+```{r}
+load(paste0(assess_path,"/Lepidorhombus_whiffiagonis/stk_MEG.RData"))
+```
+
+To work properly with this dataset, we have to specify a number of values. First, the unity of different objects:
+
+```{r}
+LepiWhi_unity_stock_n <- 1000
+```
+
+Then, the proportion of the assessed stock that is actually in the Bay of Biscay:
+
+```{r}
+LepiWhi_prop_BoB <- 0.31
+```
+
+Set the proportion of individuals in each zone defined in the ISIS-Fish model:
+
+```{r}
+LepiWhi_Map_High <- 0.85
+LepiWhi_Map_Medium <- 0.141
+LepiWhi_Map_Low <- 0.009
+```
+
+#### Initial abundance
+
+Preparation of initial abundances by year:
+
+```{r, message=FALSE}
+LepiWhi_stock_n <- data@stock.n %>% as.data.frame() %>% 
+  rename(N = data)
+
+LepiWhi_Init_list <- list()
+for(i in seq(length(years))){
+  thisInit <- LepiWhi_stock_n %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, N) %>% 
+    mutate(N = N * LepiWhi_prop_BoB * LepiWhi_unity_stock_n) %>%
+    group_by(age) %>% 
+    mutate(High = ifelse(age > 1, N * LepiWhi_Map_High, 0),
+           Medium = ifelse(age > 1, N * LepiWhi_Map_Medium, 0), 
+           Low = ifelse(age > 1, N * LepiWhi_Map_Low, 0),
+           Juv = ifelse(age == 1, N, 0)) %>%
+    ungroup() %>%
+    select(year,age,Low,Medium,High,Juv)
+  LepiWhi_Init_list[[i]] <- thisInit
+  print(thisInit)
+}
+
+```
+
+Save as .csv :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- LepiWhi_Init_list[[i]] %>% select(year) %>% distinct()
+ Data <- LepiWhi_Init_list[[i]] %>% select(-c(age,year))
+ write.table(Data,
+             file = paste0(init_save_path,"/Lepidorhombus_whiffiagonis/Abundance_Lepidorhombus_",thisYear,".csv"),
+             sep=';',
+             row.names=F)
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- LepiWhi_Init_list[[i]] %>% select(year) %>% distinct()
+ Data <- LepiWhi_Init_list[[i]] %>% 
+   mutate(N=Low+Medium+High+Juv) %>%
+   select(c(age,N))
+   saveRDS(Data,
+           file = paste0(init_save_path,"/Lepidorhombus_whiffiagonis/Abundance_Lepidorhombus_",thisYear,".rds"))
+}
+```
+
+#### Recruitment
+
+Preparation of recruitment (individuals of age 0) by year for the historical period, and geometric mean after:
+
+```{r}
+LepiWhi_recruits <- LepiWhi_stock_n %>%
+  filter(year %in% years, age == min(age)) %>%
+  mutate(rec_n = N * LepiWhi_unity_stock_n * LepiWhi_prop_BoB) %>%
+  select(year,rec_n)
+
+LepiWhi_mean <- LepiWhi_recruits %>%
+  filter(year %in% years) %>%
+  summarise(rec_n=exp(mean(log(rec_n)))) %>%
+  mutate(year='mean')
+
+LepiWhi_recruits <- LepiWhi_recruits %>%
+  mutate(year=as.character(year)) %>%
+  rbind(LepiWhi_mean)
+
+print(LepiWhi_recruits)
+```
+
+Save as .csv:
+
+```{r,warning=FALSE}
+Data <- LepiWhi_recruits 
+write.table(Data,
+             file = paste0(recruit_save_path,
+                           "/Rec_Lepidorhombus_",min(as.numeric(Data$year),na.rm = T),
+                           "_",max(as.numeric(Data$year),na.rm = T),".csv"),
+             sep=';',
+             row.names=F)
+```
+
+#### Spawning Stock Biomass
+
+Preparation of spawning stock biomass by year:
+
+```{r}
+LepiWhi_indWt_kg <- data@stock.wt %>% as.data.frame() %>% rename(indWt = data)
+LepiWhi_maturity <- data@mat %>% as.data.frame() %>% rename(maturity = data)
+
+LepiWhi_SSB_list <- list()
+for(i in seq(length(years))){
+  thisIndWt <- LepiWhi_indWt_kg %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, indWt)
+  thisMat <- LepiWhi_maturity %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, maturity) 
+  thisSSB <- LepiWhi_stock_n %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, N) %>% 
+    mutate(N = N * LepiWhi_prop_BoB * LepiWhi_unity_stock_n) %>%
+    merge(thisIndWt) %>% 
+    merge(thisMat) %>% 
+    mutate(SSB = N*indWt*maturity) %>%
+    group_by(year) %>%
+    summarise(SSB = sum(SSB))
+    
+  LepiWhi_SSB_list[[i]] <- thisSSB
+  print(thisSSB)
+}
+
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- LepiWhi_SSB_list[[i]] %>% select(year) %>% distinct()
+ Data <- LepiWhi_SSB_list[[i]] %>% 
+   select(SSB)
+   saveRDS(Data,
+           file = paste0(ssb_save_path,"/Lepidorhombus_whiffiagonis/SSB_Lepidorhombus_",thisYear,".rds"))
+}
+```
+
+#### Fishing mortality by group
+
+Preparation of fishing mortality by group from stock-object
+
+```{r}
+LepiWhi_F_bygroup <- data@harvest %>% as.data.frame() %>% 
+  rename(Fmor = data)
+
+LepiWhi_F_list <- list()
+for(i in seq(length(years))){
+  thisF <- LepiWhi_F_bygroup %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, Fmor)
+  LepiWhi_F_list[[i]] <- thisF
+  print(thisF)
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- LepiWhi_F_list[[i]] %>% select(year) %>% distinct()
+ Data <- LepiWhi_F_list[[i]] %>% 
+   select(c(age,Fmor))
+   saveRDS(Data,
+           file = paste0(F_save_path,"/Lepidorhombus_whiffiagonis/F_Lepidorhombus_",thisYear,".rds"))
+}
+```
+
+#### Catch by group
+
+Computation of catch by group-isis in number and in weight (by applying individual weights to result in numbers):
+
+```{r}
+LepiWhi_catch_n <- data@catch.n %>% 
+  as.data.frame() %>%
+  mutate(group = age-1) %>%
+  group_by(group, year) %>% 
+  summarise(catch_n = data * LepiWhi_unity_stock_n * LepiWhi_prop_BoB) %>%
+  relocate(year) %>%
+  ungroup()
+
+LepiWhi_weights <- data@catch.wt %>%
+  as.data.frame() %>%
+  rename(ind_wt_kg = data) %>% 
+  mutate(group=age-1)%>%
+  select(group,year,ind_wt_kg)
+
+LepiWhi_catch_n_by_group_isis_list <- list()
+LepiWhi_catch_kg_by_group_isis_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  thisWeight <- LepiWhi_weights %>%
+    filter(year==thisYear) %>%
+    select(group,ind_wt_kg)
+  
+  Dat_n <-LepiWhi_catch_n %>%
+    filter(year==thisYear) %>%
+    rename(obs=catch_n) %>%
+    select(year,group,obs)
+  
+  Dat_kg <- merge(Dat_n,thisWeight) %>%
+    mutate(obs = obs*ind_wt_kg) %>%
+    select(year,group,obs)
+  
+  LepiWhi_catch_n_by_group_isis_list[[i]] <- Dat_n
+  LepiWhi_catch_kg_by_group_isis_list[[i]] <- Dat_kg
+  
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- LepiWhi_catch_n_by_group_isis_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  Dat_n <- LepiWhi_catch_n_by_group_isis_list [[i]] %>% select(-year)
+  Dat_kg <- LepiWhi_catch_kg_by_group_isis_list [[i]] %>% select(-year)
+  
+  saveRDS(Dat_n,
+          file = paste0(catch_by_groupisis_path,
+                        "/Lepidorhombus_whiffiagonis/obs_catchN_megrim_groupisis",
+                        thisYear,
+                        ".rds"))
+  saveRDS(Dat_kg,
+          file = paste0(catch_by_groupisis_path,
+                        "/Lepidorhombus_whiffiagonis/obs_catchKg_megrim_groupisis",
+                        thisYear,
+                        ".rds"))
+}
+```
+
+#### Catch by country
+
+Computation of catches by country:
+
+```{r}
+LepiWhi_catch_by_country <- Catch_by_country %>% 
+  filter(Stock=='meg.27.7b-k8abd') %>%
+  mutate(Catch_n = Catch_n,
+         Catch_kg = Catch_kg)
+
+LepiWhi_catch_n_by_country_list <- list()
+LepiWhi_catch_kg_by_country_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_n <- LepiWhi_catch_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Catch_n)
+  
+  Dat_kg <- LepiWhi_catch_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Catch_kg)
+  
+  LepiWhi_catch_n_by_country_list[[i]] <- Dat_n
+  LepiWhi_catch_kg_by_country_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- LepiWhi_catch_n_by_country_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  Dat_n <- LepiWhi_catch_n_by_country_list [[i]] %>% select(-year)
+  Dat_kg <- LepiWhi_catch_kg_by_country_list [[i]] %>% select(-year)
+  
+  saveRDS(Dat_n,
+          file = paste0(catch_by_country_path,
+                        "/Lepidorhombus_whiffiagonis/obs_catchN_megrim_country",
+                        thisYear,
+                        ".rds"))
+  saveRDS(Dat_kg,
+          file = paste0(catch_by_country_path,
+                        "/Lepidorhombus_whiffiagonis/obs_catchKg_megrim_country",
+                        thisYear,
+                        ".rds"))
+}
+```
+
+#### Catch by country by group isis
+
+Computation of catches by country by groupisis
+
+```{r}
+LepiWhi_catch_by_country_groupisis <- Catch_by_country_agelength %>% 
+  filter(Stock=='meg.27.7b-k8abd') %>%
+  mutate(group = if_else(ageorlength<=10, ageorlength -1, 9))
+  
+LepiWhi_catch_n_country_groupisis_list <- list()
+LepiWhi_catch_kg_country_groupisis_list <- list()
+Dat0_n <- data.frame(group=0:71,Catch_n=0)
+Dat0_kg <- data.frame(group=0:71,Catch_kg=0)
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_n <- LepiWhi_catch_by_country_groupisis %>%
+    filter(year==thisYear) %>%
+    select(year,group,Country,Catch_n) %>%
+    arrange(group)
+  
+  Dat_kg <- LepiWhi_catch_by_country_groupisis %>%
+    filter(year==thisYear) %>%
+    select(year,group,Country,Catch_kg) %>%
+    arrange(group)
+  
+  LepiWhi_catch_n_country_groupisis_list[[i]] <- Dat_n
+  LepiWhi_catch_kg_country_groupisis_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  
+  thisYear <- LepiWhi_catch_n_country_groupisis_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+     Dat_n <-  LepiWhi_catch_n_country_groupisis_list[[i]] %>% select(-year)
+     Dat_kg <-  LepiWhi_catch_kg_country_groupisis_list[[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_country_groupisis_path,
+                          "/Lepidorhombus_whiffiagonis/obs_catchN_megrim_country_groupisis",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_country_groupisis_path,
+                          "/Lepidorhombus_whiffiagonis/obs_catchKg_megrim_country_groupisis",
+                          thisYear,
+                          ".rds"))
+  }
+}
+```
+
+#### Catch by season
+
+Computation of catches by seasons:
+
+```{r}
+LepiWhi_catch_by_season <- Catch_by_season %>% 
+  filter(Stock=='meg.27.7b-k8abd') %>%
+  mutate(Catch_n = Catch_n,
+         Catch_kg = Catch_kg)
+
+LepiWhi_catch_n_by_season_list <- list()
+LepiWhi_catch_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_n <- LepiWhi_catch_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Catch_n)
+  
+  Dat_kg <- LepiWhi_catch_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Catch_kg)
+  
+  LepiWhi_catch_n_by_season_list[[i]] <- Dat_n
+  LepiWhi_catch_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- LepiWhi_catch_n_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  Dat_n <- LepiWhi_catch_n_by_season_list[[i]] %>% select(-year)
+  Dat_kg <- LepiWhi_catch_kg_by_season_list[[i]] %>% select(-year)
+  
+  saveRDS(Dat_n,
+          file = paste0(catch_by_season_path,
+                        "/Lepidorhombus_whiffiagonis/obs_catchN_megrim_season",
+                        thisYear,
+                        ".rds"))
+  saveRDS(Dat_kg,
+          file = paste0(catch_by_season_path,
+                        "/Lepidorhombus_whiffiagonis/obs_catchKg_megrim_season",
+                        thisYear,
+                        ".rds"))
+}
+```
+
+#### Catch by season by groupisis
+
+Computation of catches by season by groupisis
+
+```{r}
+LepiWhi_catch_by_season_groupisis <- Catch_by_season_agelength %>% 
+  filter(Stock=='meg.27.7b-k8abd') %>%
+  mutate(group = if_else(ageorlength<=10, ageorlength -1, 9))
+  
+LepiWhi_catch_n_season_groupisis_list <- list()
+LepiWhi_catch_kg_season_groupisis_list <- list()
+Dat0_n <- data.frame(group=0:71,Catch_n=0)
+Dat0_kg <- data.frame(group=0:71,Catch_kg=0)
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_n <- LepiWhi_catch_by_season_groupisis %>%
+    filter(year==thisYear) %>%
+    select(year,group,Season,Catch_n) %>%
+    arrange(group)
+  
+  Dat_kg <- LepiWhi_catch_by_season_groupisis %>%
+    filter(year==thisYear) %>%
+    select(year,group,Season,Catch_kg) %>%
+    arrange(group)
+  
+  LepiWhi_catch_n_season_groupisis_list[[i]] <- Dat_n
+  LepiWhi_catch_kg_season_groupisis_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  
+  thisYear <-  LepiWhi_catch_n_season_groupisis_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+     Dat_n <-  LepiWhi_catch_n_season_groupisis_list[[i]] %>% select(-year)
+     Dat_kg <- LepiWhi_catch_kg_season_groupisis_list[[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_season_groupisis_path,
+                          "/Lepidorhombus_whiffiagonis/obs_catchN_megrim_season_groupisis",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_season_groupisis_path,
+                          "/Lepidorhombus_whiffiagonis/obs_catchKg_megrim_season_groupisis",
+                          thisYear,
+                          ".rds"))
+  }
+}
+```
+
+#### Landings by metier
+
+Computation of landings by metier in kg by metier (as defined in ISIS-Fish model):
+
+```{r}
+LepiWhi_LandByMet_kg <- land_fleet_ctry_met_seas %>% 
+  filter(species == "MEG")
+  
+LepiWhi_LandByMet_kg_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_kg <- LepiWhi_LandByMet_kg  %>%
+    filter(year==thisYear) %>%
+    group_by(year,metier_isis) %>%
+    summarise(landing_kg=sum(Landings_kg)) %>%
+    ungroup()
+  
+  LepiWhi_LandByMet_kg_list[[i]] <- Dat_kg
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- LepiWhi_LandByMet_kg_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  Dat_kg <- LepiWhi_LandByMet_kg_list[[i]] %>% select(-year)
+  if(nrow(thisYear) > 0){
+    saveRDS(Dat_kg,
+          file = paste0(catch_by_metier_path,
+                        "/Lepidorhombus_whiffiagonis/obs_landKg_megrim_metier",
+                        thisYear$year,
+                        ".rds"))
+  }
+  
+}
+```
+
+#### Landings by country
+
+Computation of landings by country:
+
+```{r,message=FALSE}
+LepiWhi_land_by_country <- land_fleet_ctry_met_seas %>%
+  filter(species=="MEG")
+
+LepiWhi_land_kg_by_country_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- LepiWhi_land_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Landings_kg) %>%
+    group_by(year,Country) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  LepiWhi_land_kg_by_country_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- LepiWhi_land_kg_by_country_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- LepiWhi_land_kg_by_country_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_country_path,
+                           "/Lepidorhombus_whiffiagonis/obs_landKg_megrim_country",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by season
+
+Computation of landings by season:
+
+```{r,message=FALSE}
+LepiWhi_land_by_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="MEG")
+
+LepiWhi_land_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- LepiWhi_land_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Landings_kg) %>%
+    group_by(year,Season) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  LepiWhi_land_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- LepiWhi_land_kg_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- LepiWhi_land_kg_by_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_season_path,
+                           "/Lepidorhombus_whiffiagonis/obs_landKg_megrim_season",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by metier by season
+
+Computation of landings by season from intercatch:
+
+```{r,message=FALSE}
+LepiWhi_land_by_metier_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="MEG")
+
+LepiWhi_land_kg_by_metier_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- LepiWhi_land_by_metier_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,metier_isis,Landings_kg) %>%
+    group_by(year,metier_isis,Season) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  LepiWhi_land_kg_by_metier_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- LepiWhi_land_kg_by_metier_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- LepiWhi_land_kg_by_metier_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_metier_season_path,
+                           "/Lepidorhombus_whiffiagonis/obs_landKg_megrim_season_metier",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+### *Lophius piscatorius* {.tabset}
+
+Here, we load the stock object associated to assessment of *Lophius piscatorius*:
+
+```{r}
+data_pisc <- get(load(paste0(assess_path,"/Lophius_piscatorius/stk_MON.RData")))
+```
+
+To work properly with this dataset, we have to specify a number of values. First, the unity of different objects:
+
+```{r}
+Lophius_unity_stock_n <- 1000
+```
+
+Then, the proportion of the assessed stock that is actually in the Bay of Biscay:
+
+```{r}
+Lophius_prop_BoB <- 0.15207
+```
+
+Set the proportion of individuals in each zone defined in the ISIS-Fish model:
+
+```{r}
+Lophius_Map_High <- 0.755
+Lophius_Map_Medium <- 0.22
+Lophius_Map_Low <- 0.025
+```
+
+The number of age classes:
+
+```{r}
+n_cl <- 8
+```
+
+Here we consider only *Lophius piscatorius*, however, in multispecies datasets for landings, the two species *Lophius piscatorius* and *Lophius budegassa* are confused. Here we compute the annual proportion of *Lophius piscatorius* in landings:
+
+```{r}
+prop_pisc <- get(load(paste0(assess_path,"/Lophius_budegassa/stk_ANK.RData")))@landings %>%
+  as.data.frame() %>%
+  select(year,data) %>%
+  rename(land_bud = data) %>%
+  merge(as.data.frame(data_pisc@landings)) %>%
+  rename(land_pisc = data) %>%
+  filter(year %in% years) %>%
+  mutate(prop = land_pisc/(land_pisc+land_bud)) %>%
+  select(year,prop)
+
+print(prop_pisc)
+```
+
+#### Initial abundance
+
+Preparation of initial abundances by year:
+
+```{r, message=FALSE}
+Lophius_stock_n <- data_pisc@stock.n %>% as.data.frame()
+  
+
+Lophius_Init_list <- list()
+for(i in seq(length(years))){
+  thisInit <- Lophius_stock_n %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, data) %>% 
+    mutate(N = data * Lophius_prop_BoB * Lophius_unity_stock_n) %>%
+    mutate(age = if_else(age<n_cl,age,n_cl-1)) %>%
+    group_by(age,year) %>%
+    summarise_all(sum) %>%
+    mutate(High = ifelse(age > 0, N * Lophius_Map_High, 0),
+           Medium = ifelse(age > 0, N * Lophius_Map_Medium, 0), 
+           Low = ifelse(age > 0, N * Lophius_Map_Low, 0),
+           Juv = ifelse(age == 0, N, 0)) %>%
+    ungroup() %>%
+    select(year,age,Low,Medium,High,Juv)
+  Lophius_Init_list[[i]] <- thisInit
+  print(thisInit)
+}
+
+```
+
+Save as .csv:
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Lophius_Init_list[[i]] %>% select(year) %>% distinct()
+ if(nrow(thisYear)==1){
+    Data <- Lophius_Init_list[[i]] %>% select(-c(age,year))
+    write.table(Data,
+                file = paste0(init_save_path,"/Lophius_piscatorius/Abundance_Lophius_",thisYear,".csv"),
+                sep=';',
+                row.names=F) 
+ }
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Lophius_Init_list[[i]] %>% select(year) %>% distinct()
+ Data <- Lophius_Init_list[[i]] %>% 
+   mutate(N=Low+Medium+High+Juv) %>%
+   select(c(age,N))
+   saveRDS(Data,
+           file = paste0(init_save_path,"/Lophius_piscatorius/Abundance_Lophius_",thisYear,".rds"))
+}
+```
+
+#### Recruitment
+
+Preparation of recruitment (individuals of age 0) by year for the historical period, and geometric mean after:
+
+```{r}
+Lophius_recruits <- Lophius_stock_n %>%
+  filter(year %in% years, age == min(age)) %>%
+  mutate(rec_n = data * Lophius_unity_stock_n * Lophius_prop_BoB) %>%
+  select(year,rec_n)
+
+Lophius_mean <- Lophius_recruits %>%
+  filter(year%in% years) %>%
+  summarise(rec_n=exp(mean(log(rec_n)))) %>%
+  mutate(year='mean')
+
+Lophius_recruits <- Lophius_recruits %>%
+  mutate(year=as.character(year)) %>%
+  rbind(Lophius_mean)
+
+print(Lophius_recruits)
+```
+
+Save as .csv:
+
+```{r,warning=FALSE}
+Data <- Lophius_recruits 
+write.table(Data,
+             file = paste0(recruit_save_path,
+                           "/Rec_Lophius_",min(as.numeric(Data$year),na.rm = T),
+                           "_",max(as.numeric(Data$year),na.rm = T),".csv"),
+             sep=';',
+             row.names=F)
+```
+
+#### Spawning Stock Biomass
+
+Preparation of spawning stock biomass by year:
+
+```{r}
+Lophius_indWt_kg <- data_pisc@stock.wt %>% as.data.frame() %>% rename(indWt = data)
+Lophius_maturity <- data_pisc@mat %>% as.data.frame() %>% rename(maturity = data)
+
+Lophius_SSB_list <- list()
+for(i in seq(length(years))){
+  thisIndWt <- Lophius_indWt_kg %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, indWt)
+  thisMat <- Lophius_maturity %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, maturity) 
+  thisSSB <- Lophius_stock_n %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, data) %>% 
+    mutate(N = data * Lophius_prop_BoB * Lophius_unity_stock_n) %>%
+    merge(thisIndWt) %>% 
+    merge(thisMat) %>% 
+    mutate(SSB = N*indWt*maturity) %>%
+    group_by(year) %>%
+    summarise(SSB = sum(SSB))
+    
+  Lophius_SSB_list[[i]] <- thisSSB
+  print(thisSSB)
+}
+
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Lophius_SSB_list[[i]] %>% select(year) %>% distinct()
+ Data <- Lophius_SSB_list[[i]] %>% 
+   select(SSB)
+   saveRDS(Data,
+           file = paste0(ssb_save_path,"/Lophius_piscatorius/SSB_Lophius_",thisYear,".rds"))
+}
+```
+
+#### Fishing mortality by group
+
+Preparation of fishing mortality by group from stock-object
+
+```{r}
+Lophius_F_bygroup <- data_pisc@harvest %>% as.data.frame() %>% 
+  rename(Fmor = data)
+
+Lophius_F_list <- list()
+for(i in seq(length(years))){
+  thisF <- Lophius_F_bygroup %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, Fmor)
+  Lophius_F_list[[i]] <- thisF
+  print(thisF)
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Lophius_F_list[[i]] %>% select(year) %>% distinct()
+ Data <- Lophius_F_list[[i]] %>% 
+   select(c(age,Fmor))
+   saveRDS(Data,
+           file = paste0(F_save_path,"/Lophius_piscatorius/F_Lophius_",thisYear,".rds"))
+}
+```
+
+#### Catch by group
+
+Computation of catch by group-isis in number and in weight (by applying individual weights to result in numbers):
+
+```{r,message=FALSE}
+Lophius_catch_n <- as.data.frame(data_pisc@catch.n)  %>% 
+  mutate(age = if_else(age<=7,age,7)) %>%
+  group_by(age,year) %>%
+  summarise(value=sum(data)) %>%
+  rename(group = age) %>%
+  group_by(group, year) %>% 
+  summarise(catch_n = value * Lophius_unity_stock_n * Lophius_prop_BoB) %>%
+  relocate(year) %>%
+  ungroup()
+
+Lophius_weights <- as.data.frame(data_pisc@catch.wt) %>% 
+  mutate(age = if_else(age<=7,age,7)) %>%
+  group_by(age,year) %>%
+  summarise(ind_wt_kg = mean(data)) %>% 
+  mutate(group=age)%>%
+  select(group,year,ind_wt_kg)
+
+Lophius_catch_n_by_group_isis_list <- list()
+Lophius_catch_kg_by_group_isis_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  thisWeight <- Lophius_weights %>%
+    filter(year==thisYear) %>%
+    select(group,ind_wt_kg)
+  
+  Dat_n <-Lophius_catch_n %>%
+    filter(year==thisYear) %>%
+    rename(obs=catch_n) %>%
+    select(year,group,obs)
+  
+  Dat_kg <- merge(Dat_n,thisWeight) %>%
+    mutate(obs = obs*ind_wt_kg) %>%
+    select(year,group,obs)
+  
+  Lophius_catch_n_by_group_isis_list[[i]] <- Dat_n
+  Lophius_catch_kg_by_group_isis_list[[i]] <- Dat_kg
+  
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Lophius_catch_n_by_group_isis_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+    Dat_n <- Lophius_catch_n_by_group_isis_list [[i]] %>% select(-year)
+    Dat_kg <- Lophius_catch_kg_by_group_isis_list [[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_by_groupisis_path,
+                          "/Lophius_piscatorius/obs_catchN_monkfish_groupisis",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_groupisis_path,
+                          "/Lophius_piscatorius/obs_catchKg_monkfish_groupisis",
+                         thisYear,
+                          ".rds"))
+  }
+  
+}
+```
+
+#### landings by metier
+
+Computation of landings by metier in kg by metier (as defined in ISIS-Fish model):
+
+```{r,message=FALSE}
+Lophius_LandByMet_kg <- land_fleet_ctry_met_seas %>% 
+  filter(species == "MNZ") %>%
+  merge(prop_pisc) %>%
+  mutate(Landings_kg = Landings_kg * prop)
+
+Lophius_LandByMet_kg_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_kg <- Lophius_LandByMet_kg  %>%
+    filter(year==thisYear) %>%
+    group_by(year,metier_isis) %>%
+    summarise(landing_kg=sum(Landings_kg)) %>%
+    ungroup()
+  
+  Lophius_LandByMet_kg_list[[i]] <- Dat_kg
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Lophius_LandByMet_kg_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  Dat_kg <- Lophius_LandByMet_kg_list[[i]] %>% select(-year)
+  if(nrow(thisYear) > 0){
+    saveRDS(Dat_kg,
+          file = paste0(catch_by_metier_path,
+                        "/Lophius_piscatorius/obs_landKg_monkfish_metier",
+                        thisYear$year,
+                        ".rds"))
+  }
+  
+}
+```
+
+#### Landings by country
+
+Computation of landings by country from intercatch:
+
+```{r}
+Lophius_land_by_country <- land_fleet_ctry_met_seas %>%
+  filter(species=="MNZ") %>%
+  merge(prop_pisc) %>%
+  mutate(Landings_kg = Landings_kg * prop)
+
+Lophius_land_kg_by_country_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Lophius_land_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Landings_kg) %>%
+    group_by(year,Country) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Lophius_land_kg_by_country_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Lophius_land_kg_by_country_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Lophius_land_kg_by_country_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_country_path,
+                           "/Lophius_piscatorius/obs_landKg_monkfish_country",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Lophius_land_by_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="MNZ") %>%
+  merge(prop_pisc) %>%
+  mutate(Landings_kg = Landings_kg * prop)
+
+Lophius_land_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Lophius_land_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Landings_kg) %>%
+    group_by(year,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Lophius_land_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Lophius_land_kg_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Lophius_land_kg_by_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_season_path,
+                           "/Lophius_piscatorius/obs_landKg_monkfish_season",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by metier by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Lophius_land_by_metier_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="MNZ") %>%
+  merge(prop_pisc) %>%
+  mutate(Landings_kg = Landings_kg * prop)
+
+Lophius_land_kg_by_metier_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Lophius_land_by_metier_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,metier_isis,Landings_kg) %>%
+    group_by(year,metier_isis,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Lophius_land_kg_by_metier_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Lophius_land_kg_by_metier_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Lophius_land_kg_by_metier_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_metier_season_path,
+                           "/Lophius_piscatorius/obs_landKg_monkfish_season_metier",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+### *Lophius budegassa* {.tabset}
+
+Here, we load the stock object associated to assessment of *Lophius budegassa*:
+
+```{r,eval=F}
+load(paste0(assess_path,"/Lophius_budegassa/stk_ANK.Rdata"))
+```
+
+To work properly with this dataset, we have to specify a number of values. First, the unity of different objects:
+
+```{r}
+Lbudega_unity_stock_n <- 1000
+```
+
+Then, the proportion of the assessed stock that is actually in the Bay of Biscay:mean (captures8abd/(8abd+7)) over 2022 2021 2020
+
+```{r}
+Lbudega_prop_BoB <- 0.2015202 
+```
+
+The number of age classes:
+
+```{r}
+n_cl <- 8
+```
+
+Set the proportion of individuals in each zone defined in the ISIS-Fish model: assuming a similar distribustion as piscatorius
+
+```{r}
+Lbudega_Map_High <- Lophius_Map_High
+Lbudega_Map_Medium <- Lophius_Map_Medium
+Lbudega_Map_Low <- Lophius_Map_Low
+```
+
+Here we consider only *Lophius budegassa*, however, in multispecies datasets for landings, the two species *Lophius piscatorius* and *Lophius budegassa* are confused. Here we compute the annual proportion of *Lophius budegassa* in landings:
+
+```{r}
+prop_bud <- prop_pisc %>% mutate(prop = 1 - prop)
+print(prop_bud)
+```
+
+#### Initial abundance
+
+Preparation of initial abundances by year:
+
+```{r, message=FALSE}
+Lbudega_stock_n <- data@stock.n %>% as.data.frame()
+  
+
+Lbudega_Init_list <- list()
+for(i in seq(length(years))){
+  thisInit <- Lbudega_stock_n %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, data) %>% 
+    mutate(N = data * Lbudega_prop_BoB * Lbudega_unity_stock_n) %>%
+    mutate(age = if_else(age<n_cl,age,n_cl-1)) %>%
+    group_by(age,year) %>%
+    summarise_all(sum) %>%
+    mutate(High = ifelse(age > 0, N * Lbudega_Map_High, 0),
+           Medium = ifelse(age > 0, N * Lbudega_Map_Medium, 0), 
+           Low = ifelse(age > 0, N * Lbudega_Map_Low, 0),
+           Juv = ifelse(age == 0, N, 0)) %>%
+    ungroup() %>%
+    select(year,age,Low,Medium,High,Juv)
+  Lbudega_Init_list[[i]] <- thisInit
+  print(thisInit)
+}
+
+```
+
+Save as .csv:
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Lbudega_Init_list[[i]] %>% select(year) %>% distinct()
+ if(nrow(thisYear)==1){
+    Data <- Lbudega_Init_list[[i]] %>% select(-c(age,year))
+    write.table(Data,
+                file = paste0(init_save_path,"/Lophius_budegassa/Abundance_Lbudegassa_",thisYear,".csv"),
+                sep=';',
+                row.names=F) 
+ }
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Lbudega_Init_list[[i]] %>% select(year) %>% distinct()
+ Data <- Lbudega_Init_list[[i]] %>% 
+   mutate(N=Low+Medium+High+Juv) %>%
+   select(c(age,N))
+   saveRDS(Data,
+           file = paste0(init_save_path,"/Lophius_budegassa/Abundance_Lbudegassa_",thisYear,".rds"))
+}
+```
+
+#### Recruitment
+
+Preparation of recruitment (individuals of age 0) by year for the historical period, and geometric mean after:
+
+```{r}
+Lbudega_recruits <- Lbudega_stock_n %>%
+  filter(year %in% years, age == min(age)) %>%
+  mutate(rec_n = data * Lbudega_unity_stock_n * Lbudega_prop_BoB) %>%
+  select(year,rec_n)
+
+Lbudega_mean <- Lbudega_recruits %>%
+  filter(year%in% years) %>%
+  summarise(rec_n=exp(mean(log(rec_n)))) %>%
+  mutate(year='mean')
+
+Lbudega_recruits <- Lbudega_recruits %>%
+  mutate(year=as.character(year)) %>%
+  rbind(Lbudega_mean)
+
+print(Lbudega_recruits)
+```
+
+Save as .csv:
+
+```{r,warning=FALSE}
+Data <- Lbudega_recruits 
+write.table(Data,
+             file = paste0(recruit_save_path,
+                           "/Rec_Lbudegassa_",min(as.numeric(Data$year),na.rm = T),
+                           "_",max(as.numeric(Data$year),na.rm = T),".csv"),
+             sep=';',
+             row.names=F)
+```
+
+#### Spawning Stock Biomass
+
+Preparation of spawning stock biomass by year:
+
+```{r}
+Lbudega_indWt_kg <- data@stock.wt %>% as.data.frame() %>% rename(indWt = data)
+Lbudega_maturity <- data@mat %>% as.data.frame() %>% rename(maturity = data)
+
+Lbudega_SSB_list <- list()
+for(i in seq(length(years))){
+  thisIndWt <- Lbudega_indWt_kg %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, indWt)
+  thisMat <- Lbudega_maturity %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, maturity) 
+  thisSSB <- Lbudega_stock_n %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, data) %>% 
+    mutate(N = data * Lbudega_prop_BoB * Lbudega_unity_stock_n) %>%
+    merge(thisIndWt) %>% 
+    merge(thisMat) %>% 
+    mutate(SSB = N*indWt*maturity) %>%
+    group_by(year) %>%
+    summarise(SSB = sum(SSB))
+    
+  Lbudega_SSB_list[[i]] <- thisSSB
+  print(thisSSB)
+}
+
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Lbudega_SSB_list[[i]] %>% select(year) %>% distinct()
+ Data <- Lbudega_SSB_list[[i]] %>% 
+   select(SSB)
+   saveRDS(Data,
+           file = paste0(ssb_save_path,"/Lophius_budegassa/SSB_Lbudegassa_",thisYear,".rds"))
+}
+```
+
+#### Fishing mortality by group
+
+Preparation of fishing mortality by group from stock-object
+
+```{r}
+Lbudega_F_bygroup <- data@harvest %>% as.data.frame() %>% 
+  rename(Fmor = data)
+
+Lbudega_F_list <- list()
+for(i in seq(length(years))){
+  thisF <- Lbudega_F_bygroup %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, Fmor)
+  Lbudega_F_list[[i]] <- thisF
+  print(thisF)
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Lbudega_F_list[[i]] %>% select(year) %>% distinct()
+ Data <- Lbudega_F_list[[i]] %>% 
+   select(c(age,Fmor))
+   saveRDS(Data,
+           file = paste0(F_save_path,"/Lophius_budegassa/F_Lbudegassa_",thisYear,".rds"))
+}
+```
+
+#### Catch by group
+
+Computation of catch by group-isis in number and in weight (by applying individual weights to result in numbers):
+
+```{r,message=FALSE}
+Lbudega_catch_n <- as.data.frame(data@catch.n)  %>% 
+  mutate(age = if_else(age<=7,age,7)) %>%
+  group_by(age,year) %>%
+  summarise(value=sum(data)) %>%
+  rename(group = age) %>%
+  group_by(group, year) %>% 
+  summarise(catch_n = value * Lbudega_unity_stock_n * Lbudega_prop_BoB) %>%
+  relocate(year) %>%
+  ungroup()
+
+Lbudega_weights <- as.data.frame(data@catch.wt) %>% 
+  mutate(age = if_else(age<=7,age,7)) %>%
+  group_by(age,year) %>%
+  summarise(ind_wt_kg = mean(data)) %>% 
+  mutate(group=age)%>%
+  select(group,year,ind_wt_kg)
+
+Lbudega_catch_n_by_group_isis_list <- list()
+Lbudega_catch_kg_by_group_isis_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  thisWeight <- Lbudega_weights %>%
+    filter(year==thisYear) %>%
+    select(group,ind_wt_kg)
+  
+  Dat_n <-Lbudega_catch_n %>%
+    filter(year==thisYear) %>%
+    rename(obs=catch_n) %>%
+    select(year,group,obs)
+  
+  Dat_kg <- merge(Dat_n,thisWeight) %>%
+    mutate(obs = obs*ind_wt_kg) %>%
+    select(year,group,obs)
+  
+  Lbudega_catch_n_by_group_isis_list[[i]] <- Dat_n
+  Lbudega_catch_kg_by_group_isis_list[[i]] <- Dat_kg
+  
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Lbudega_catch_n_by_group_isis_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+    Dat_n <- Lbudega_catch_n_by_group_isis_list [[i]] %>% select(-year)
+    Dat_kg <- Lbudega_catch_kg_by_group_isis_list [[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_by_groupisis_path,
+                          "/Lophius_budegassa/obs_catchN_Lbudegassa_groupisis",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_groupisis_path,
+                          "/Lophius_budegassa/obs_catchKg_Lbudegassa_groupisis",
+                         thisYear,
+                          ".rds"))
+  }
+  
+}
+```
+
+#### landings by metier
+
+Computation of landings by metier in kg by metier (as defined in ISIS-Fish model):
+
+```{r,message=FALSE}
+Lbudega_LandByMet_kg <- land_fleet_ctry_met_seas %>% 
+  filter(species == "MNZ") %>%
+  merge(prop_bud) %>%
+  mutate(Landings_kg = Landings_kg * prop)
+
+Lbudega_LandByMet_kg_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_kg <- Lbudega_LandByMet_kg  %>%
+    filter(year==thisYear) %>%
+    group_by(year,metier_isis) %>%
+    summarise(landing_kg=sum(Landings_kg)) %>%
+    ungroup()
+  
+  Lbudega_LandByMet_kg_list[[i]] <- Dat_kg
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Lbudega_LandByMet_kg_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  Dat_kg <- Lbudega_LandByMet_kg_list[[i]] %>% select(-year)
+  if(nrow(thisYear) > 0){
+    saveRDS(Dat_kg,
+          file = paste0(catch_by_metier_path,
+                        "/Lophius_budegassa/obs_landKg_Lbudegassa_metier",
+                        thisYear$year,
+                        ".rds"))
+  }
+  
+}
+```
+
+#### Landings by country
+
+Computation of landings by country from intercatch:
+
+```{r}
+Lbudega_land_by_country <- land_fleet_ctry_met_seas %>%
+  filter(species=="MNZ") %>%
+  merge(prop_bud) %>%
+  mutate(Landings_kg = Landings_kg * prop)
+
+Lbudega_land_kg_by_country_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Lbudega_land_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Landings_kg) %>%
+    group_by(year,Country) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Lbudega_land_kg_by_country_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Lbudega_land_kg_by_country_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Lbudega_land_kg_by_country_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_country_path,
+                           "/Lophius_budegassa/obs_landKg_Lbudegassa_country",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Lbudega_land_by_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="MNZ") %>%
+  merge(prop_bud) %>%
+  mutate(Landings_kg = Landings_kg * prop)
+
+Lbudega_land_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Lbudega_land_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Landings_kg) %>%
+    group_by(year,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Lbudega_land_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Lbudega_land_kg_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Lbudega_land_kg_by_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_season_path,
+                           "/Lophius_budegassa/obs_landKg_Lbudegassa_season",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by metier by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Lbudega_land_by_metier_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="MNZ") %>%
+  merge(prop_bud) %>%
+  mutate(Landings_kg = Landings_kg * prop)
+
+Lbudega_land_kg_by_metier_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Lbudega_land_by_metier_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,metier_isis,Landings_kg) %>%
+    group_by(year,metier_isis,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Lbudega_land_kg_by_metier_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Lbudega_land_kg_by_metier_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Lbudega_land_kg_by_metier_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_metier_season_path,
+                           "/Lophius_budegassa/obs_landKg_Lbudegassa_season_metier",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+### *Raja clavata* {.tabset}
+
+Here, we load the stock objects associated to assessment and landings of *Raja clavata*:
+
+```{r}
+load(paste0(assess_path,"/Raja_clavata/BiomassRclavata09_21_Est.Rdata"))
+Raja_land_raw <- readRDS(paste0(assess_path,"/Raja_clavata/Landings_Raja_clavata_ICES8.rds"))
+```
+
+Set the mean weight of individuals, in tons:
+
+```{r}
+Raja_mean_weight <- 0.003
+```
+
+Set the proportion of individuals in each zone defined in the ISIS-Fish model:
+
+```{r}
+Raja_Map_High <- 0.907
+Raja_Map_Medium <- 0.086
+Raja_Map_Low <- 0.007
+```
+
+#### Initial abundance
+
+Reading and formatting the raw dataset:
+
+```{r}
+
+Raja_biomass_full <- as.data.frame(Res) %>%
+  rownames_to_column() %>%  
+  pivot_longer(-rowname) %>% 
+  pivot_wider(names_from=rowname, values_from=value) %>% 
+  select(-name) 
+
+Raja_biomass_full <- as.data.frame(Raja_biomass_full[,1:13]) 
+Raja_biomass_full <- as.matrix(Raja_biomass_full)
+n <- 3000
+Raja_biomass_full <- array(as.vector(t(Raja_biomass_full)), c(13, 1, n))
+attributes(Raja_biomass_full)$dimnames <- list(
+  Years  = 2009:2021, 
+  Variable  = "Biomass", 
+  simval = 1:3000
+)
+
+Raja_biomass_med <-  apply(Raja_biomass_full,1:2,median) %>%
+  as.data.frame %>% 
+  rename(Biomass_median = Biomass) %>% 
+  rownames_to_column("Year")
+
+```
+
+Computing initial abundance (in number of individuals) by year:
+
+```{r}
+Raja_Init_list <- list()
+for(i in seq(length(years))){
+  thisInit <- Raja_biomass_med %>% 
+    filter(Year == years[i]) %>% 
+    mutate(N = Biomass_median  / Raja_mean_weight) %>%
+    mutate(High =  N * Raja_Map_High,
+           Medium =  N * Raja_Map_Medium, 
+           Low = N * Raja_Map_Low) %>%
+    select(Year,Low,Medium,High)
+  Raja_Init_list[[i]] <- thisInit
+  print(thisInit)
+}
+
+```
+
+Save as .csv:
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Raja_Init_list[[i]] %>% select(Year) %>% distinct()
+ if(nrow(thisYear)==1){
+    Data <- Raja_Init_list[[i]] %>% select(-Year)
+    write.table(Data,
+                file = paste0(init_save_path,"/Raja_clavata/Abundance_Raja_",thisYear,".csv"),
+                sep=';',
+                row.names=F) 
+ }
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Raja_Init_list[[i]] %>% select(Year) %>% distinct()
+ Data <- Raja_Init_list[[i]] %>% 
+   mutate(N=Low+Medium+High,age="all") %>%
+   select(age,N)
+   saveRDS(Data,
+           file = paste0(init_save_path,"/Raja_clavata/Abundance_Raja_",thisYear,".rds"))
+}
+```
+
+#### Spawning Stock Biomass
+
+As the model for *Raja clavata* is not structured, SSB is considered equal to total biomass. Information is extracted from ICES (2023) WGBIE stock annex:
+
+```{r}
+K <- 6331000
+Bmsy <- 0.5 * K
+
+Raja_SSB <- data.frame(years) %>%
+  mutate(relative_B = case_when(years == 2015 ~ 0.5,
+                                years == 2016 ~ 0.58,
+                                years == 2017 ~ 0.7,
+                                years == 2018 ~ 0.8,
+                                years == 2019 ~ 0.85,
+                                years == 2020 ~ 0.92,
+                                years == 2021 ~ 0.95,
+                                years == 2022 ~ 0.96)) %>%
+  mutate(SSB = relative_B * Bmsy) %>%
+  select(years,SSB)
+
+print(Raja_SSB)
+
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ Data <- Raja_SSB %>%
+   filter(years == years[i]) %>%
+   select(SSB)
+ 
+ saveRDS(Data,file = paste0(ssb_save_path,"/Raja_clavata/SSB_Raja_",years[i],".rds"))
+}
+```
+
+#### Fishing mortality
+
+Preparation of fishing mortality from ICES stock annex:
+
+```{r}
+r <- 0.18
+Fmsy <- r/2
+
+Raja_F <- data.frame(years) %>%
+  mutate(relative_F = case_when(years == 2015 ~ 1.65,
+                                years == 2016 ~ 1.29,
+                                years == 2017 ~ 1.21,
+                                years == 2018 ~ 1.21,
+                                years == 2019 ~ 1.03,
+                                years == 2020 ~ 0.97,
+                                years == 2021 ~ 1.02)) %>%
+  mutate(Fmor = relative_F * Fmsy) %>% 
+  select(years,Fmor)
+
+print(Raja_F)
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ Data <- Raja_F %>%
+   filter(years == years[i]) %>%
+   select(Fmor) %>%
+   mutate(age="all")
+ 
+ if(!is.na(Data$Fmor)){
+   saveRDS(Data,file = paste0(F_save_path,"/Raja_clavata/F_Raja_",years[i],".rds"))
+ }
+ 
+}
+```
+
+#### Landings by group
+
+Computation of landings in kg for each year:
+
+```{r}
+Raja_land_kg <- Raja_land_raw %>% 
+  mutate(Landings_kg=Landings*1000) %>%
+  group_by(Year) %>%
+  summarise(Landings_kg=sum(Landings_kg)) %>%
+  select(Year,Landings_kg) %>%
+  ungroup()
+
+Raja_land_kg_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Raja_land_kg %>%
+    filter(Year==thisYear) %>% 
+    rename(obs=Landings_kg) %>%
+    mutate(group=0) %>%
+    select(Year,group,obs)
+    
+  Raja_land_kg_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Raja_land_kg_list[[i]]  %>% 
+    select(Year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+    Dat_kg <- Raja_land_kg_list[[i]] %>% select(-Year)
+  
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_groupisis_path,
+                          "/Raja_clavata/obs_landKg_Raja",
+                          thisYear,
+                          ".rds"))
+  }
+}
+```
+
+#### Landings by country
+
+Computation of landings by country:
+
+```{r}
+Raja_LandByCountry_kg <- Raja_land_raw %>% 
+  filter(Country != "IRL") %>% #remove IRL which is not in ISIS
+  mutate(Landings_kg=Landings*1000) %>%
+  group_by(Year,Country) %>%
+  summarise(Landings_kg=sum(Landings_kg)) %>%
+  select(Year,Country,Landings_kg) %>%
+  ungroup()
+
+Raja_LandByCountry_kg_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Raja_LandByCountry_kg %>%
+    filter(Year==thisYear) %>% 
+    rename(obs=Landings_kg) %>%
+    mutate(group=0) %>%
+    select(Year,Country,obs)
+    
+  Raja_LandByCountry_kg_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Raja_LandByCountry_kg_list[[i]]  %>% 
+    select(Year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+    Dat_kg <- Raja_LandByCountry_kg_list[[i]] %>% select(-Year)
+  
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_country_path,
+                          "/Raja_clavata/obs_landKg_raja_country",
+                          thisYear,
+                          ".rds"))
+  }
+}
+```
+
+#### Landings by metier
+
+Computation of landings by metier in kg by metier (as defined in ISIS-Fish model):
+
+```{r}
+Raja_LandByMet_kg <- land_fleet_ctry_met_seas %>% 
+  filter(species == "RJC")
+  
+Raja_LandByMet_kg_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_kg <- Raja_LandByMet_kg  %>%
+    filter(year==thisYear) %>%
+    group_by(year,metier_isis) %>%
+    summarise(landing_kg=sum(Landings_kg)) %>%
+    ungroup()
+  
+  Raja_LandByMet_kg_list[[i]] <- Dat_kg
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Raja_LandByMet_kg_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  Dat_kg <- Raja_LandByMet_kg_list[[i]] %>% select(-year)
+  if(nrow(thisYear) > 0){
+    saveRDS(Dat_kg,
+          file = paste0(catch_by_metier_path,
+                        "/Raja_clavata/obs_landKg_raja_metier",
+                        thisYear$year,
+                        ".rds"))
+  }
+  
+}
+```
+
+#### Landings by country
+
+Computation of landings by country from intercatch:
+
+```{r}
+Raja_land_by_country <- land_fleet_ctry_met_seas %>%
+  filter(species=="RJC")
+
+Raja_land_kg_by_country_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Raja_land_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Landings_kg) %>%
+    group_by(year,Country) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Raja_land_kg_by_country_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Raja_land_kg_by_country_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Raja_land_kg_by_country_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_country_path,
+                           "/Raja_clavata/obs_landKg_raja_country",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Raja_land_by_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="RJC")
+
+Raja_land_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Raja_land_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Landings_kg) %>%
+    group_by(year,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Raja_land_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Raja_land_kg_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Raja_land_kg_by_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_season_path,
+                           "/Raja_clavata/obs_landKg_raja_season",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by metier by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Raja_land_by_metier_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="RJC")
+
+Raja_land_kg_by_metier_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Raja_land_by_metier_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,metier_isis,Landings_kg) %>%
+    group_by(year,metier_isis,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Raja_land_kg_by_metier_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Raja_land_kg_by_metier_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Raja_land_kg_by_metier_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_metier_season_path,
+                           "/Raja_clavata/obs_landKg_raja_season_metier",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+### *Solea solea* {.tabset}
+
+Here, we load the stock object associated to assessment of *Solea solea*:
+
+```{r}
+load(paste0(assess_path,"/Solea_solea/stk_SOL.RData"))
+```
+
+Set the unity of stock objects:
+
+```{r}
+Solea_unity_stock_n <- 1000
+```
+
+Then, the proportion of the assessed stock that is actually in the Bay of Biscay:
+
+```{r}
+Solea_prop_BoB <- 1
+```
+
+Set the proportion of individuals in each zone defined in the ISIS-Fish model:
+
+```{r}
+Solea_Map_High <- 0.718
+Solea_Map_Medium <- 0.243
+Solea_Map_Low <- 0.038
+```
+
+#### Initial abundance
+
+Preparation of initial abundances by year:
+
+```{r, message=FALSE}
+Solea_stock_n <- data@stock.n %>% 
+  as.data.frame() %>% 
+  rename(value = data)
+
+Solea_Init_list <- list()
+for(i in seq(length(years))){
+  thisInit <- Solea_stock_n %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, value) %>% 
+    mutate(N = value * Solea_unity_stock_n * Solea_prop_BoB) %>%
+    group_by(age) %>% 
+    mutate(High = N * Solea_Map_High,
+           Medium =  N * Solea_Map_Medium, 
+           Low =  N * Solea_Map_Low, 0) %>%
+    ungroup() %>%
+    select(year,age,High,Medium,Low)
+  Solea_Init_list[[i]] <- thisInit
+  print(thisInit)
+}
+
+```
+
+Save as .csv:
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Solea_Init_list[[i]] %>% select(year) %>% distinct()
+ if(nrow(thisYear)==1){
+    Data <- Solea_Init_list[[i]] %>% select(-c(age,year))
+    write.table(Data,
+                file = paste0(init_save_path,"/Solea_solea/Abundance_Solea_",thisYear,".csv"),
+                sep=';',
+                row.names=F) 
+ }
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Solea_Init_list[[i]] %>% select(year) %>% distinct()
+ Data <- Solea_Init_list[[i]] %>% 
+   mutate(N=Low+Medium+High) %>%
+   select(c(age,N))
+   saveRDS(Data,
+           file = paste0(init_save_path,"/Solea_solea/Abundance_Solea_",thisYear,".rds"))
+}
+```
+
+#### Recruitment
+
+Preparation of recruitment (individuals of age 0) by year for the historical period, and geometric mean over the period 2019-2021 after:
+
+```{r}
+Solea_recruits <- Solea_stock_n %>%
+  filter(year %in% years, age == min(age)) %>%
+  mutate(rec_n = value * Solea_unity_stock_n * Solea_prop_BoB) %>%
+  select(year,rec_n)
+
+Solea_mean <- Solea_recruits %>%
+  filter(year%in% c(2019:2021)) %>%
+  summarise(rec_n=exp(mean(log(rec_n)))) %>%
+  mutate(year='mean')
+
+Solea_recruits <- Solea_recruits %>%
+  mutate(year=as.character(year)) %>%
+  rbind(Solea_mean)
+
+print(Solea_recruits)
+```
+
+Save as .csv:
+
+```{r,warning=FALSE}
+Data <- Solea_recruits 
+write.table(Data,
+             file = paste0(recruit_save_path,
+                           "/Rec_Solea_",min(as.numeric(Data$year),na.rm = T),
+                           "_",max(as.numeric(Data$year),na.rm = T),".csv"),
+             sep=';',
+             row.names=F)
+```
+
+#### Spawning Stock Biomass
+
+Preparation of spawning stock biomass by year:
+
+```{r}
+Solea_indWt_kg <- data@stock.wt %>% as.data.frame() %>% rename(indWt = data)
+Solea_maturity <- data@mat %>% as.data.frame() %>% rename(maturity = data)
+
+Solea_SSB_list <- list()
+for(i in seq(length(years))){
+  thisIndWt <- Solea_indWt_kg %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, indWt)
+  thisMat <- Solea_maturity %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, maturity) 
+  thisSSB <- Solea_stock_n %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, value) %>% 
+    mutate(N = value * Solea_prop_BoB * Solea_unity_stock_n) %>%
+    merge(thisIndWt) %>% 
+    merge(thisMat) %>% 
+    mutate(SSB = N*indWt*maturity) %>%
+    group_by(year) %>%
+    summarise(SSB = sum(SSB))
+    
+  Solea_SSB_list[[i]] <- thisSSB
+  print(thisSSB)
+}
+
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Solea_SSB_list[[i]] %>% select(year) %>% distinct()
+ Data <- Solea_SSB_list[[i]] %>% 
+   select(SSB)
+   saveRDS(Data,
+           file = paste0(ssb_save_path,"/Solea_solea/SSB_Solea_",thisYear,".rds"))
+}
+```
+
+#### Fishing mortality by group
+
+Preparation of fishing mortality by group from stock-object
+
+```{r}
+Solea_F_bygroup <- data@harvest %>% as.data.frame() %>% 
+  rename(Fmor = data)
+
+Solea_F_list <- list()
+for(i in seq(length(years))){
+  thisF <- Solea_F_bygroup %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, Fmor)
+  Solea_F_list[[i]] <- thisF
+  print(thisF)
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Solea_F_list[[i]] %>% select(year) %>% distinct()
+ Data <- Solea_F_list[[i]] %>% 
+   select(c(age,Fmor))
+   saveRDS(Data,
+           file = paste0(F_save_path,"/Solea_solea/F_Solea_",thisYear,".rds"))
+}
+```
+
+#### Catch by group
+
+Computation of catch by group-isis in number and in weight (by applying individual weights to result in numbers):
+
+```{r}
+Solea_catch_n <-data@catch.n %>% 
+  as.data.frame() %>%
+  rename(value = data) %>% 
+  mutate(group = age-2) %>%
+  group_by(group, year) %>% 
+  summarise(catch_n = value * Solea_unity_stock_n) %>%
+  relocate(year) %>%
+  ungroup()
+
+Solea_weights <- data@catch.wt %>%
+  as.data.frame() %>%
+  rename(ind_wt_kg = data) %>% 
+  mutate(group=age-2)%>%
+  select(group,year,ind_wt_kg)
+
+Solea_catch_n_by_group_isis_list <- list()
+Solea_catch_kg_by_group_isis_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  thisWeight <- Solea_weights %>%
+    filter(year==thisYear) %>%
+    select(group,ind_wt_kg)
+  
+  Dat_n <-Solea_catch_n %>%
+    filter(year==thisYear) %>%
+    rename(obs=catch_n) %>%
+    select(year,group,obs)
+  
+  Dat_kg <- merge(Dat_n,thisWeight) %>%
+    mutate(obs = obs*ind_wt_kg) %>%
+    select(year,group,obs)
+  
+  Solea_catch_n_by_group_isis_list[[i]] <- Dat_n
+  Solea_catch_kg_by_group_isis_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Solea_catch_n_by_group_isis_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+    Dat_n <- Solea_catch_n_by_group_isis_list [[i]] %>% select(-year)
+    Dat_kg <- Solea_catch_kg_by_group_isis_list [[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_by_groupisis_path,
+                          "/Solea_solea/obs_catchN_sole_groupisis",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_groupisis_path,
+                          "/Solea_solea/obs_catchKg_sole_groupisis",
+                         thisYear,
+                          ".rds"))
+  }
+}
+```
+
+#### Catch by country
+
+Computation of catches by country:
+
+```{r}
+Solea_catch_by_country <- Catch_by_country %>% 
+  filter(Stock=='sol.27.8ab') %>%
+  mutate(Catch_n = Catch_n,
+         Catch_kg = Catch_kg)
+
+Solea_catch_n_by_country_list <- list()
+Solea_catch_kg_by_country_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_n <- Solea_catch_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Catch_n)
+  
+  Dat_kg <- Solea_catch_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Catch_kg)
+  
+  Solea_catch_n_by_country_list[[i]] <- Dat_n
+  Solea_catch_kg_by_country_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  
+  thisYear <- Solea_catch_n_by_country_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+     Dat_n <- Solea_catch_n_by_country_list [[i]] %>% select(-year)
+     Dat_kg <- Solea_catch_kg_by_country_list [[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_by_country_path,
+                          "/Solea_solea/obs_catchN_sole_country",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_country_path,
+                          "/Solea_solea/obs_catchKg_sole_country",
+                          thisYear,
+                          ".rds"))
+  }
+}
+```
+
+#### Catch by season
+
+Computation of catches by seasons:
+
+```{r}
+Solea_catch_by_season <- Catch_by_season %>% 
+  filter(Stock=='sol.27.8ab') %>%
+  mutate(Catch_n = Catch_n,
+         Catch_kg = Catch_kg)
+
+Solea_catch_n_by_season_list <- list()
+Solea_catch_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_n <- Solea_catch_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Catch_n)
+  
+  Dat_kg <- Solea_catch_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Catch_kg)
+  
+  Solea_catch_n_by_season_list[[i]] <- Dat_n
+  Solea_catch_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Solea_catch_n_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+    Dat_n <- Solea_catch_n_by_season_list[[i]] %>% select(-year)
+    Dat_kg <- Solea_catch_kg_by_season_list[[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_by_season_path,
+                          "/Solea_solea/obs_catchN_sole_season",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_season_path,
+                          "/Solea_solea/obs_catchKg_sole_season",
+                          thisYear,
+                          ".rds"))
+    }
+  }
+  
+```
+
+#### Landings by metier
+
+Computation of landings by metier in kg by metier (as defined in ISIS-Fish model):
+
+```{r}
+Solea_LandByMet_kg <- land_fleet_ctry_met_seas %>% 
+  filter(species == "SOL")
+  
+Solea_LandByMet_kg_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_kg <- Solea_LandByMet_kg  %>%
+    filter(year==thisYear) %>%
+    group_by(year,metier_isis) %>%
+    summarise(landing_kg=sum(Landings_kg)) %>%
+    ungroup()
+  
+  Solea_LandByMet_kg_list[[i]] <- Dat_kg
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Solea_LandByMet_kg_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  Dat_kg <- Solea_LandByMet_kg_list[[i]] %>% select(-year)
+  if(nrow(thisYear) > 0){
+    saveRDS(Dat_kg,
+          file = paste0(catch_by_metier_path,
+                        "/Solea_solea/obs_landKg_sole_metier",
+                        thisYear$year,
+                        ".rds"))
+  }
+  
+}
+```
+
+#### Landings by country
+
+Computation of landings by country from intercatch:
+
+```{r}
+Solea_land_by_country <- land_fleet_ctry_met_seas %>%
+  filter(species=="SOL")
+
+Solea_land_kg_by_country_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Solea_land_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Landings_kg) %>%
+    group_by(year,Country) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Solea_land_kg_by_country_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Solea_land_kg_by_country_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Solea_land_kg_by_country_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_country_path,
+                           "/Solea_solea/obs_landKg_sole_country",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Solea_land_by_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="SOL")
+
+Solea_land_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Solea_land_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Landings_kg) %>%
+    group_by(year,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Solea_land_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Solea_land_kg_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Solea_land_kg_by_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_season_path,
+                           "/Solea_solea/obs_landKg_sole_season",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by metier by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Solea_land_by_metier_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="SOL")
+
+Solea_land_kg_by_metier_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Solea_land_by_metier_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,metier_isis,Landings_kg) %>%
+    group_by(year,metier_isis,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Solea_land_kg_by_metier_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Solea_land_kg_by_metier_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Solea_land_kg_by_metier_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_metier_season_path,
+                           "/Solea_solea/obs_landKg_sole_season_metier",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+### *Leucoraja naevus* {.tabset}
+
+Here, we load the raw dataset associated to assessment of *Leucoraja naevus* (biomass in tons):
+
+```{r}
+load(paste0(assess_path,"/Leucoraja_naevus/cuckoo_Catch.RData"))
+Leucoraja_assess_raw <- readRDS(paste0(assess_path,"/Leucoraja_naevus/Biomass_leucoraja.rds"))
+```
+
+Set the mean weight of individuals, in tons:
+
+```{r}
+Leucoraja_mean_weight <- 0.003
+```
+
+Then, the proportion of the assessed stock that is actually in the Bay of Biscay:
+
+```{r}
+Leucoraja_prop_BoB <- 0.229
+```
+
+#### Initial abundance
+
+Computing initial abundance (in number of individuals) by year:
+
+```{r}
+Leucoraja_Init_list <- list()
+for(i in seq(length(years))){
+  thisInit <- Leucoraja_assess_raw %>% 
+    filter(year == years[i]) %>% 
+    mutate(N = est * Leucoraja_prop_BoB  / Leucoraja_mean_weight) %>%
+    select(year,N)
+    
+  Leucoraja_Init_list[[i]] <- thisInit
+  print(thisInit)
+}
+
+```
+
+Save as .csv:
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Leucoraja_Init_list[[i]] %>% select(year) %>% distinct()
+ if(nrow(thisYear)==1){
+    Data <- Leucoraja_Init_list[[i]] %>% select(-year)
+    write.table(Data,
+                file = paste0(init_save_path,"/Leucoraja_naevus/Abundance_Leucoraja_",thisYear,".csv"),
+                sep=';',
+                row.names=F) 
+ }
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Leucoraja_Init_list[[i]] %>% select(year) %>% distinct()
+ Data <- Leucoraja_Init_list[[i]] %>% 
+   mutate(age="all") %>%
+   select(age,N)
+   saveRDS(Data,
+           file = paste0(init_save_path,"/Leucoraja_naevus/Abundance_Leucoraja_",thisYear,".rds"))
+}
+```
+
+#### Spawning Stock Biomass
+
+As the model for *Leucoraja naevus* is not structured, SSB is considered equal to total biomass. Information is extracted from ICES (2023) WGBIE stock annex:
+
+```{r}
+K <- 44582277
+Bmsy <- 0.5 * K
+
+Leucoraja_SSB <- data.frame(years) %>%
+  mutate(relative_B = case_when(years == 2015 ~ 1.44,
+                                years == 2016 ~ 1.5,
+                                years == 2017 ~ 1.54,
+                                years == 2018 ~ 1.6,
+                                years == 2019 ~ 1.63,
+                                years == 2020 ~ 1.64,
+                                years == 2021 ~ 1.67)) %>%
+  mutate(SSB = relative_B * Bmsy) %>%
+  select(years,SSB)
+
+print(Raja_SSB)
+
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ Data <- Leucoraja_SSB %>%
+   filter(years == years[i]) %>%
+   select(SSB)
+ 
+ saveRDS(Data,file = paste0(ssb_save_path,"/Leucoraja_naevus/SSB_Leucoraja_",years[i],".rds"))
+}
+```
+
+#### Fishing mortality
+
+Preparation of fishing mortality from ICES stock annex:
+
+```{r}
+r <- 0.5225
+Fmsy <- r/2
+
+Leucoraja_F <- data.frame(years) %>%
+  mutate(relative_F = case_when(years == 2015 ~ 0.40,
+                                years == 2016 ~ 0.37,
+                                years == 2017 ~ 0.32,
+                                years == 2018 ~ 0.31,
+                                years == 2019 ~ 0.34,
+                                years == 2020 ~ 0.29,
+                                years == 2021 ~ 0.25)) %>%
+  mutate(Fmor = relative_F * Fmsy) %>% 
+  select(years,Fmor)
+
+print(Leucoraja_F)
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ Data <- Leucoraja_F %>%
+   filter(years == years[i]) %>%
+   select(Fmor) %>%
+   mutate(age="all")
+ 
+ if(!is.na(Data$Fmor)){
+   saveRDS(Data,file = paste0(F_save_path,"/Leucoraja_naevus/F_Leucoraja_",years[i],".rds"))
+ }
+ 
+}
+```
+
+#### Landings in weight
+
+Computation of landings in kg for each year:
+
+```{r}
+Leucoraja_land_kg <- rjnC %>% 
+  rbind(data.frame(Year = c(2020,2021),landings = c(2453,2516))) %>%
+  drop_na() %>%
+  mutate(Landings_BoB_kg=landings * Leucoraja_prop_BoB *1000) %>%
+  select(Year,Landings_BoB_kg) %>%
+  ungroup()
+
+Leucoraja_land_kg_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Leucoraja_land_kg %>%
+    filter(Year==thisYear) %>% 
+    rename(obs=Landings_BoB_kg) %>%
+    mutate(group=0) %>%
+    select(Year,group,obs)
+    
+  Leucoraja_land_kg_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Leucoraja_land_kg_list[[i]]  %>% 
+    select(Year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+    Dat_kg <- Leucoraja_land_kg_list[[i]] %>% select(-Year)
+  
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_groupisis_path,
+                          "/Leucoraja_naevus/obs_landKg_Leucoraja",
+                          thisYear,
+                          ".rds"))
+  }
+}
+```
+
+#### Landings by country
+
+Computation of landings by country from intercatch:
+
+```{r}
+Leucoraja_land_by_country <- land_fleet_ctry_met_seas %>%
+  filter(species=="RJN")
+
+Leucoraja_land_kg_by_country_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Leucoraja_land_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Landings_kg) %>%
+    group_by(year,Country) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Leucoraja_land_kg_by_country_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Leucoraja_land_kg_by_country_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Leucoraja_land_kg_by_country_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_country_path,
+                           "/Leucoraja_naevus/obs_landKg_leucoraja_country",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by metier
+
+Computation of landings by metier in kg by metier (as defined in ISIS-Fish model):
+
+```{r}
+Leucoraja_LandByMet_kg <- land_fleet_ctry_met_seas %>% 
+  filter(species == "RJN")
+  
+Leucoraja_LandByMet_kg_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_kg <- Leucoraja_LandByMet_kg  %>%
+    filter(year==thisYear) %>%
+    group_by(year,metier_isis) %>%
+    summarise(landing_kg=sum(Landings_kg)) %>%
+    ungroup()
+  
+  Leucoraja_LandByMet_kg_list[[i]] <- Dat_kg
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Leucoraja_LandByMet_kg_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  Dat_kg <- Leucoraja_LandByMet_kg_list[[i]] %>% select(-year)
+  if(nrow(thisYear) > 0){
+    saveRDS(Dat_kg,
+          file = paste0(catch_by_metier_path,
+                        "/Leucoraja_naevus/obs_landKg_Leucoraja_metier",
+                        thisYear$year,
+                        ".rds"))
+  }
+  
+}
+```
+
+#### Landings by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Leucoraja_land_by_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="RJN")
+
+Leucoraja_land_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Leucoraja_land_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Landings_kg) %>%
+    group_by(year,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Leucoraja_land_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Leucoraja_land_kg_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Leucoraja_land_kg_by_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_season_path,
+                           "/Leucoraja_naevus/obs_landKg_leucoraja_season",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by metier by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Leucoraja_land_by_metier_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="RJN")
+
+Leucoraja_land_kg_by_metier_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Leucoraja_land_by_metier_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,metier_isis,Landings_kg) %>%
+    group_by(year,metier_isis,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Leucoraja_land_kg_by_metier_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Leucoraja_land_kg_by_metier_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Leucoraja_land_kg_by_metier_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_metier_season_path,
+                           "/Leucoraja_naevus/obs_landKg_leucoraja_season_metier",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+### *Merluccius merluccius* {.tabset}
+
+Here, we load the stock object associated to assessment of *Merluccius merluccius*:
+
+```{r}
+load(paste0(assess_path,"/Merluccius_merluccius/stk_HKE.RData"))
+```
+
+Set the unity of stock objects:
+
+```{r}
+Merluccius_unity_stock_n <- 1000
+```
+
+Set the proportion of the assessed stock that is actually in the Bay of Biscay:
+
+```{r}
+Merluccius_prop_BoB <- 0.34478
+```
+
+Set the proportion of individuals in each zone defined in the ISIS-Fish model:
+
+```{r}
+Merluccius_propZone_matrix <- read.table(file = paste0(vigier_path,"/Vigier2022_AbundanceMerluccius2010.txt"),
+                                         header = T,
+                                         sep = " ") %>%
+  as.data.frame() %>%
+  rename(group = Bin_number) %>%
+  mutate(total = Celtic_Sea+Northern_area+BoB_recruitment+BoB_presence+BoB_spawning+BoB_recruitment_interim) %>%
+  mutate(zone_merlu_presence = BoB_presence/total,
+         zone_merlu_reproduction = BoB_spawning/total,
+         zone_merlu_recrutement = BoB_recruitment/total,
+         zone_merlu_recrutementInter = BoB_recruitment_interim/total,
+         Zone_CelticSea = Celtic_Sea/total,
+         Zone_NorthernArea = Northern_area/total) %>%
+  select(group,
+         zone_merlu_presence,
+         zone_merlu_reproduction,
+         zone_merlu_recrutement,
+         zone_merlu_recrutementInter,
+         Zone_CelticSea,
+         Zone_NorthernArea)
+
+Merluccius_propZone_matrix[is.na(Merluccius_propZone_matrix)] <- 0
+
+```
+
+#### Initial abundance
+
+Preparation of initial abundances by length group by year. Here, we have to take into account Merluccius growth equation (cf. Vigier et al., 2022). Let us compute the relationship between ISIS groups, age and length. Here we display the corresponding table:
+
+```{r}
+Merluccius_struc <- data.frame(group=0:71) %>% 
+  mutate(l_min = case_when(group <= 38 ~  1 + group,
+                           38 < group & group <= 68 ~ 40 + 2*(group-39),
+                           68 < group ~ 100 + 10*(group-69)),
+         l_max = case_when(group <= 38 ~  1 + (group+1),
+                           38 < (group+1) & (group+1) <= 68 ~ 40 + 2*((group+1)-39),
+                           68 < (group+1) ~ 100 + 10*((group+1)-69)),
+         l_moy = l_min+(l_max-l_min)/2) %>%
+  mutate(age_min = floor((-1/0.177319) * log(1-(l_min/130))),
+         age_moy = floor((-1/0.177319) * log(1-(l_moy/130))),
+         age_max = floor((-1/0.177319) * log(1-(l_max/130))))
+
+print(Merluccius_struc)
+
+```
+
+Consequently, we can define this conversion function:
+
+```{r}
+group_to_age_merluccius <- function(group){
+  
+  age <- case_when(group %in% 0:19 ~ "0",
+                   group %in% 20:37 ~ "1",
+                   group %in% 38:45 ~ "2", 
+                   group %in% 46:51 ~ "3",
+                   group %in% 52:56 ~ "4",
+                   group %in% 57:61 ~ "5",
+                   group %in% 62:64 ~ "6",
+                   group %in% 65:67 ~ "7",
+                   group == 68 ~ "8",
+                   group == 69 ~ "9-10",
+                   group == 70 ~ "11-13",
+                   group == 71 ~ "14+")
+  
+  return(age)
+}
+
+```
+
+According to this table, with the spatial distribution computed previously and the stock evaluation by age, we are able to fill the initial abundance matrix:
+
+```{r, message=FALSE}
+
+Merluccius_stock_n_raw <- data@stock.n %>% 
+  as.data.frame() %>% 
+  rename(value = data) 
+
+Merluccius_stock_n <- data.frame()
+for(i in seq(length(years))){
+  
+  thisYear <- years[i]
+  thisStock <- Merluccius_stock_n_raw %>%
+    filter(year==thisYear) %>%
+    select(age,value)
+  
+  thisDat <- data.frame(group=0:71,year=thisYear) %>%
+    mutate(N = case_when(group <= 19 ~ thisStock$value[thisStock$age==0]/20,
+                         20 <= group & group <= 37 ~ thisStock$value[thisStock$age==1]/18,
+                         38 <= group & group <= 45 ~ thisStock$value[thisStock$age==2]/8,
+                         46 <= group & group <= 51 ~ thisStock$value[thisStock$age==3]/6,
+                         52 <= group & group <= 56 ~ thisStock$value[thisStock$age==4]/5,
+                         57 <= group & group <= 61 ~ thisStock$value[thisStock$age==5]/5,
+                         62 <= group & group <= 64 ~ thisStock$value[thisStock$age==6]/3,
+                         65 <= group & group <= 67 ~ thisStock$value[thisStock$age==7]/3,
+                         group == 68 ~ thisStock$value[thisStock$age==8],
+                         group == 69 ~ thisStock$value[thisStock$age==9]+thisStock$value[thisStock$age==10],
+                         group == 70 ~ thisStock$value[thisStock$age==11] +
+                           thisStock$value[thisStock$age==12] +
+                           thisStock$value[thisStock$age==13],
+                         group == 71 ~ thisStock$value[thisStock$age==14] + thisStock$value[thisStock$age==15]))
+  
+  Merluccius_stock_n <- rbind(Merluccius_stock_n,thisDat)
+  
+}
+
+
+
+Merluccius_Init_list <- list()
+for(i in seq(length(years))){
+  
+  thisYear <- years[i]
+  thisInit <- Merluccius_stock_n %>% 
+    filter(year == thisYear) %>% 
+    inner_join(Merluccius_propZone_matrix) %>%
+    mutate(zone_merlu_presence = N * Merluccius_unity_stock_n * zone_merlu_presence,
+           zone_merlu_reproduction = N * Merluccius_unity_stock_n * zone_merlu_reproduction, 
+           zone_merlu_recrutement = N * Merluccius_unity_stock_n * zone_merlu_recrutement,
+           zone_merlu_recrutementInter = N * Merluccius_unity_stock_n * zone_merlu_recrutementInter,
+           Zone_CelticSea = N * Merluccius_unity_stock_n * Zone_CelticSea,
+           Zone_NorthernArea = N * Merluccius_unity_stock_n * Zone_NorthernArea) %>%
+    select(year,group,
+           zone_merlu_presence,
+           zone_merlu_reproduction,
+           zone_merlu_recrutement,
+           zone_merlu_recrutementInter,
+           Zone_CelticSea,Zone_NorthernArea)
+  Merluccius_Init_list[[i]] <- thisInit
+  print(thisInit)
+}
+
+```
+
+Save as .csv:
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Merluccius_Init_list[[i]] %>% select(year) %>% distinct()
+ if(nrow(thisYear)==1){
+    Data <- Merluccius_Init_list[[i]] %>% select(-c(group,year))
+    write.table(Data,
+                file = paste0(init_save_path,"/Merluccius_merluccius/Abundance_Merluccius_",thisYear,".csv"),
+                sep=';',
+                row.names=F) 
+ }
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Merluccius_Init_list[[i]] %>% select(year) %>% distinct()
+ Data <- Merluccius_Init_list[[i]] %>% 
+   mutate(N=zone_merlu_presence+zone_merlu_reproduction+zone_merlu_recrutement+zone_merlu_recrutementInter) %>%
+   mutate(age=group_to_age_merluccius(group)) %>%
+   group_by(age) %>%
+   summarise(N=sum(N)) %>%
+   ungroup() 
+ 
+   saveRDS(Data,
+           file = paste0(init_save_path,"/Merluccius_merluccius/Abundance_Merluccius_",thisYear,".rds"))
+}
+```
+
+#### Recruitment
+
+Preparation of recruitment (individuals of age 0) by year for the historical period, and geometric mean after:
+
+```{r}
+Merluccius_recruits <- Merluccius_stock_n_raw %>%
+  filter(year %in% years, age == min(age)) %>%
+  mutate(rec_n = value * Merluccius_unity_stock_n * Merluccius_prop_BoB) %>%
+  select(year,rec_n)
+
+Merluccius_mean <- Merluccius_recruits %>%
+  filter(year%in% years) %>%
+  summarise(rec_n=exp(mean(log(rec_n)))) %>%
+  mutate(year='mean')
+
+Merluccius_recruits <- Merluccius_recruits %>%
+  mutate(year=as.character(year)) %>%
+  rbind(Merluccius_mean)
+
+print(Merluccius_recruits)
+```
+
+Save as .csv:
+
+```{r,warning=FALSE}
+Data <- Merluccius_recruits 
+write.table(Data,
+             file = paste0(recruit_save_path,
+                           "/Rec_Merluccius_",min(as.numeric(Data$year),na.rm = T),
+                           "_",max(as.numeric(Data$year),na.rm = T),".csv"),
+             sep=';',
+             row.names=F)
+```
+
+#### Spawning Stock Biomass
+
+Preparation of spawning stock biomass by year:
+
+```{r, message =FALSE, warning=FALSE}
+Merluccius_indWt_kg <- data@stock.wt %>% as.data.frame() %>% rename(indWt = data)
+Merluccius_maturity <- data@mat %>% as.data.frame() %>% rename(maturity = data)
+
+Merluccius_SSB_list <- list()
+for(i in seq(length(years))){
+  
+  thisIndWt <- Merluccius_indWt_kg %>% 
+    filter(year == years[i]) %>% 
+    mutate(age=case_when(age <=8 ~ as.character(age),
+                         age %in% c(9,10) ~ "9-10",
+                         age %in% c(11,12,13) ~ "11-13",
+                         age >= 14 ~"14+")) %>%
+    group_by(year,age) %>%
+    summarise(indWt=mean(indWt)) %>%
+    ungroup()
+  
+  thisMat <- Merluccius_maturity %>% 
+    filter(year == years[i]) %>% 
+    mutate(age=case_when(age <=8 ~ as.character(age),
+                         age %in% c(9,10) ~ "9-10",
+                         age %in% c(11,12,13) ~ "11-13",
+                         age >= 14 ~"14+")) %>%
+    group_by(year,age) %>%
+    summarise(maturity=mean(maturity)) %>%
+    ungroup() 
+  
+  thisSSB <- Merluccius_stock_n %>% 
+    filter(year == years[i]) %>% 
+    select(year,group, N) %>% 
+    mutate(N = N *  Merluccius_unity_stock_n) %>%
+    mutate(age=group_to_age_merluccius(group)) %>%
+    group_by(year,age) %>%
+    summarise(N=sum(N)) %>%
+    ungroup() %>%
+    merge(thisIndWt) %>% 
+    merge(thisMat) %>% 
+    mutate(SSB = N*indWt*maturity) %>%
+    group_by(year) %>%
+    summarise(SSB = sum(SSB))
+    
+  Merluccius_SSB_list[[i]] <- thisSSB
+  print(thisSSB)
+}
+
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Merluccius_SSB_list[[i]] %>% select(year) %>% distinct()
+ Data <- Merluccius_SSB_list[[i]] %>% 
+   select(SSB)
+   saveRDS(Data,
+           file = paste0(ssb_save_path,"/Merluccius_merluccius/SSB_Merluccius_",thisYear,".rds"))
+}
+```
+
+#### Fishing mortality by group
+
+Preparation of fishing mortality by group from stock-object
+
+```{r}
+Merluccius_F_bygroup <- data@harvest %>% as.data.frame() %>% 
+  rename(Fmor = data)
+
+Merluccius_F_list <- list()
+for(i in seq(length(years))){
+  thisF <- Merluccius_F_bygroup %>% 
+    filter(year == years[i]) %>% 
+    select(year,age, Fmor)
+  Merluccius_F_list[[i]] <- thisF
+  print(thisF)
+}
+```
+
+Save as .rds :
+
+```{r}
+for(i in seq(length(years))){
+ thisYear <- Merluccius_F_list[[i]] %>% select(year) %>% distinct()
+ Data <- Merluccius_F_list[[i]] %>% 
+   select(c(age,Fmor))
+   saveRDS(Data,
+           file = paste0(F_save_path,"/Merluccius_merluccius/F_Merluccius_",thisYear,".rds"))
+}
+```
+
+#### Catch by group
+
+Computation of catch by group-isis in number and in weight (by applying individual weights to result in numbers):
+
+```{r}
+Merluccius_catch_n_raw <-data@catch.n %>% 
+  as.data.frame() 
+
+Merluccius_weights_raw <- data@catch.wt %>%
+  as.data.frame() %>%
+  rename(ind_wt_kg = data) %>% 
+  select(age,year,ind_wt_kg)
+
+Merluccius_catch_groupisis <- data.frame()
+for(i in seq(length(years))){
+  
+  thisYear <- years[i]
+  
+  thisCatch <- Merluccius_catch_n_raw %>%
+    filter(year==thisYear) %>%
+    mutate(catch_n = data * Merluccius_unity_stock_n) %>%
+    select(age,catch_n)
+  
+  thisWeight <- Merluccius_weights_raw %>% filter(year==thisYear)
+  
+  coef9 <- thisCatch$catch_n[thisCatch$age==9]/(thisCatch$catch_n[thisCatch$age==9]+thisCatch$catch_n[thisCatch$age==10])
+  coef10 <- thisCatch$catch_n[thisCatch$age==10]/(thisCatch$catch_n[thisCatch$age==9]+thisCatch$catch_n[thisCatch$age==10])
+  coef11 <- thisCatch$catch_n[thisCatch$age==11]/(thisCatch$catch_n[thisCatch$age==11]+thisCatch$catch_n[thisCatch$age==12]+thisCatch$catch_n[thisCatch$age==13])
+  coef12 <- thisCatch$catch_n[thisCatch$age==12]/(thisCatch$catch_n[thisCatch$age==11]+thisCatch$catch_n[thisCatch$age==12]+thisCatch$catch_n[thisCatch$age==13])
+  coef13 <- thisCatch$catch_n[thisCatch$age==13]/(thisCatch$catch_n[thisCatch$age==11]+thisCatch$catch_n[thisCatch$age==12]+thisCatch$catch_n[thisCatch$age==13])
+  coef14 <- thisCatch$catch_n[thisCatch$age==14]/(thisCatch$catch_n[thisCatch$age==14]+thisCatch$catch_n[thisCatch$age==15])
+  coef15 <- thisCatch$catch_n[thisCatch$age==15]/(thisCatch$catch_n[thisCatch$age==14]+thisCatch$catch_n[thisCatch$age==15])
+    
+  thisDat <- data.frame(group=0:71,year=thisYear) %>%
+    mutate(N = case_when(group <= 19 ~ thisCatch$catch_n[thisCatch$age==0]/20,
+                         20 <= group & group <= 37 ~ thisCatch$catch_n[thisCatch$age==1]/18,
+                         38 <= group & group <= 45 ~ thisCatch$catch_n[thisCatch$age==2]/8,
+                         46 <= group & group <= 51 ~ thisCatch$catch_n[thisCatch$age==3]/6,
+                         52 <= group & group <= 56 ~ thisCatch$catch_n[thisCatch$age==4]/5,
+                         57 <= group & group <= 61 ~ thisCatch$catch_n[thisCatch$age==5]/5,
+                         62 <= group & group <= 64 ~ thisCatch$catch_n[thisCatch$age==6]/3,
+                         65 <= group & group <= 67 ~ thisCatch$catch_n[thisCatch$age==7]/3,
+                         group == 68 ~ thisCatch$catch_n[thisCatch$age==8],
+                         group == 69 ~ thisCatch$catch_n[thisCatch$age==9]+thisCatch$catch_n[thisCatch$age==10],
+                         group == 70 ~ thisCatch$catch_n[thisCatch$age==11] +
+                           thisCatch$catch_n[thisCatch$age==12] +
+                           thisCatch$catch_n[thisCatch$age==13],
+                         group == 71 ~ thisCatch$catch_n[thisCatch$age==14] + thisCatch$catch_n[thisCatch$age==15])) %>%
+    mutate(ind_wt_kg = case_when(group <= 19 ~ thisWeight$ind_wt_kg[thisWeight$age==0],
+                         20 <= group & group <= 37 ~ thisWeight$ind_wt_kg[thisWeight$age==1],
+                         38 <= group & group <= 45 ~ thisWeight$ind_wt_kg[thisWeight$age==2],
+                         46 <= group & group <= 51 ~ thisWeight$ind_wt_kg[thisWeight$age==3],
+                         52 <= group & group <= 56 ~ thisWeight$ind_wt_kg[thisWeight$age==4],
+                         57 <= group & group <= 61 ~ thisWeight$ind_wt_kg[thisWeight$age==5],
+                         62 <= group & group <= 64 ~ thisWeight$ind_wt_kg[thisWeight$age==6],
+                         65 <= group & group <= 67 ~ thisWeight$ind_wt_kg[thisWeight$age==7],
+                         group == 68 ~ thisWeight$ind_wt_kg[thisWeight$age==8],
+                         group == 69 ~ coef9 * thisWeight$ind_wt_kg[thisWeight$age==9]+ coef10 * thisWeight$ind_wt_kg[thisWeight$age==10],
+                         group == 70 ~ coef11 * thisWeight$ind_wt_kg[thisWeight$age==11] +
+                           coef12 * thisWeight$ind_wt_kg[thisWeight$age==12] +
+                           coef13 * thisWeight$ind_wt_kg[thisWeight$age==13],
+                         group == 71 ~ coef14 * thisWeight$ind_wt_kg[thisWeight$age==14] + coef15 * thisWeight$ind_wt_kg[thisWeight$age==15]))
+   
+  
+  Merluccius_catch_groupisis <- rbind(Merluccius_catch_groupisis,thisDat)
+  
+}
+
+Merluccius_catch_groupisis <- Merluccius_catch_groupisis %>%
+  mutate(catch_kg = N * ind_wt_kg)
+
+Merluccius_catch_n_by_group_isis_list <- list()
+Merluccius_catch_kg_by_group_isis_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_n <- Merluccius_catch_groupisis %>%
+    filter(year==thisYear) %>%
+    rename(obs=N) %>%
+    select(year,group,obs)
+  
+  Dat_kg <-  Merluccius_catch_groupisis %>%
+    filter(year==thisYear) %>%
+    rename(obs = catch_kg) %>%
+    select(year,group,obs)
+  
+  Merluccius_catch_n_by_group_isis_list[[i]] <- Dat_n
+  Merluccius_catch_kg_by_group_isis_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Merluccius_catch_n_by_group_isis_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+    Dat_n <- Merluccius_catch_n_by_group_isis_list [[i]] %>% select(-year)
+    Dat_kg <- Merluccius_catch_kg_by_group_isis_list [[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_by_groupisis_path,
+                          "/Merluccius_merluccius/obs_catchN_hake_groupisis",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_groupisis_path,
+                          "/Merluccius_merluccius/obs_catchKg_hake_groupisis",
+                         thisYear,
+                          ".rds"))
+  }
+}
+```
+
+#### Catch by country
+
+Computation of catches by country:
+
+```{r}
+Merluccius_catch_by_country <- Catch_by_country %>% 
+  filter(Stock=='hke.27.3a46-8abd') %>%
+  mutate(Catch_n = Catch_n,
+         Catch_kg = Catch_kg)
+
+Merluccius_catch_n_by_country_list <- list()
+Merluccius_catch_kg_by_country_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_n <- Merluccius_catch_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Catch_n)
+  
+  Dat_kg <- Merluccius_catch_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Catch_kg)
+  
+  Merluccius_catch_n_by_country_list[[i]] <- Dat_n
+  Merluccius_catch_kg_by_country_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  
+  thisYear <- Merluccius_catch_n_by_country_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+     Dat_n <- Merluccius_catch_n_by_country_list [[i]] %>% select(-year)
+     Dat_kg <- Merluccius_catch_kg_by_country_list [[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_by_country_path,
+                          "/Merluccius_merluccius/obs_catchN_hake_country",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_country_path,
+                          "/Merluccius_merluccius/obs_catchKg_hake_country",
+                          thisYear,
+                          ".rds"))
+  }
+}
+```
+
+#### Catch by country by groupisis
+
+Computation of catches by country by groupisis
+
+```{r}
+Merluccius_catch_by_country_groupisis <- Catch_by_country_agelength %>% 
+  filter(Stock=='hke.27.3a46-8abd') %>%
+  mutate(group = case_when(ageorlength <= 400  ~ (ageorlength %/% 10) - 1,
+                           ageorlength > 400 & ageorlength <= 1000 ~ 39 + (ageorlength - 400) %/% 20,
+                           ageorlength > 1000 & ageorlength <= 1200  ~  69 + (ageorlength - 1000) %/% 100,
+                           ageorlength > 1200 ~ 71))
+  
+Merluccius_catch_n_country_groupisis_list <- list()
+Merluccius_catch_kg_country_groupisis_list <- list()
+Dat0_n <- data.frame(group=0:71,Catch_n=0)
+Dat0_kg <- data.frame(group=0:71,Catch_kg=0)
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_n <- Merluccius_catch_by_country_groupisis %>%
+    filter(year==thisYear) %>%
+    select(year,group,Country,Catch_n) %>%
+    arrange(group)
+  
+  Dat_kg <- Merluccius_catch_by_country_groupisis %>%
+    filter(year==thisYear) %>%
+    select(year,group,Country,Catch_kg) %>%
+    arrange(group)
+  
+  Merluccius_catch_n_country_groupisis_list[[i]] <- Dat_n
+  Merluccius_catch_kg_country_groupisis_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  
+  thisYear <- Merluccius_catch_n_country_groupisis_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+     Dat_n <-  Merluccius_catch_n_country_groupisis_list[[i]] %>% select(-year)
+     Dat_kg <-  Merluccius_catch_kg_country_groupisis_list[[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_country_groupisis_path,
+                          "/Merluccius_merluccius/obs_catchN_hake_country_groupisis",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_country_groupisis_path,
+                          "/Merluccius_merluccius/obs_catchKg_hake_country_groupisis",
+                          thisYear,
+                          ".rds"))
+  }
+}
+```
+
+#### Catch by season
+
+Computation of catches by seasons:
+
+```{r}
+Merluccius_catch_by_season <- Catch_by_season %>% 
+  filter(Stock=='hke.27.3a46-8abd') %>%
+  mutate(Catch_n = Catch_n,
+         Catch_kg = Catch_kg)
+
+Merluccius_catch_n_by_season_list <- list()
+Merluccius_catch_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_n <- Merluccius_catch_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Catch_n)
+  
+  Dat_kg <- Merluccius_catch_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Catch_kg)
+  
+  Merluccius_catch_n_by_season_list[[i]] <- Dat_n
+  Merluccius_catch_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Merluccius_catch_n_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+    Dat_n <- Merluccius_catch_n_by_season_list[[i]] %>% select(-year)
+    Dat_kg <- Merluccius_catch_kg_by_season_list[[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_by_season_path,
+                          "/Merluccius_merluccius/obs_catchN_hake_season",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_season_path,
+                          "/Merluccius_merluccius/obs_catchKg_hake_season",
+                          thisYear,
+                          ".rds"))
+    }
+  }
+  
+```
+
+#### Catch by season by groupisis
+
+Computation of catches by season by groupisis
+
+```{r}
+Merluccius_catch_by_season_groupisis <- Catch_by_season_agelength %>% 
+  filter(Stock=='hke.27.3a46-8abd') %>%
+  mutate(group = case_when(ageorlength <= 400  ~ (ageorlength %/% 10) - 1,
+                           ageorlength > 400 & ageorlength <= 1000 ~ 39 + (ageorlength - 400) %/% 20,
+                           ageorlength > 1000 & ageorlength <= 1200  ~  69 + (ageorlength - 1000) %/% 100,
+                           ageorlength > 1200 ~ 71))
+  
+Merluccius_catch_n_season_groupisis_list <- list()
+Merluccius_catch_kg_season_groupisis_list <- list()
+Dat0_n <- data.frame(group=0:71,Catch_n=0)
+Dat0_kg <- data.frame(group=0:71,Catch_kg=0)
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_n <- Merluccius_catch_by_season_groupisis %>%
+    filter(year==thisYear) %>%
+    select(year,group,Season,Catch_n) %>%
+    arrange(group)
+  
+  Dat_kg <- Merluccius_catch_by_season_groupisis %>%
+    filter(year==thisYear) %>%
+    select(year,group,Season,Catch_kg) %>%
+    arrange(group)
+  
+  Merluccius_catch_n_season_groupisis_list[[i]] <- Dat_n
+  Merluccius_catch_kg_season_groupisis_list[[i]] <- Dat_kg
+  
+  print(Dat_n)
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  
+  thisYear <-  Merluccius_catch_n_season_groupisis_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+     Dat_n <-  Merluccius_catch_n_season_groupisis_list[[i]] %>% select(-year)
+     Dat_kg <- Merluccius_catch_kg_season_groupisis_list[[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_season_groupisis_path,
+                          "/Merluccius_merluccius/obs_catchN_hake_season_groupisis",
+                          thisYear,
+                          ".rds"))
+    saveRDS(Dat_kg,
+            file = paste0(catch_season_groupisis_path,
+                          "/Merluccius_merluccius/obs_catchKg_hake_season_groupisis",
+                          thisYear,
+                          ".rds"))
+  }
+}
+```
+
+#### Landings by metier
+
+Computation of landings by metier in kg by metier (as defined in ISIS-Fish model):
+
+```{r}
+Merluccius_LandByMet_kg <- land_fleet_ctry_met_seas %>% 
+  filter(species == "HKE")
+  
+Merluccius_LandByMet_kg_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_kg <- Merluccius_LandByMet_kg  %>%
+    filter(year==thisYear) %>%
+    group_by(year,metier_isis) %>%
+    summarise(landing_kg=sum(Landings_kg)) %>%
+    ungroup()
+  
+  Merluccius_LandByMet_kg_list[[i]] <- Dat_kg
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Merluccius_LandByMet_kg_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  Dat_kg <- Merluccius_LandByMet_kg_list[[i]] %>% select(-year)
+  if(nrow(thisYear) > 0){
+    saveRDS(Dat_kg,
+          file = paste0(catch_by_metier_path,
+                        "/Merluccius_merluccius/obs_landKg_hake_metier",
+                        thisYear$year,
+                        ".rds"))
+  }
+  
+}
+```
+
+#### Landings by country
+
+Computation of landings by country from intercatch:
+
+```{r}
+Merluccius_land_by_country <- land_fleet_ctry_met_seas %>%
+  filter(species=="HKE")
+
+Merluccius_land_kg_by_country_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Merluccius_land_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Landings_kg) %>%
+    group_by(year,Country) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Merluccius_land_kg_by_country_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Merluccius_land_kg_by_country_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Merluccius_land_kg_by_country_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_country_path,
+                           "/Merluccius_merluccius/obs_landKg_hake_country",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Merluccius_land_by_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="HKE")
+
+Merluccius_land_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Merluccius_land_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Landings_kg) %>%
+    group_by(year,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Merluccius_land_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Merluccius_land_kg_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Merluccius_land_kg_by_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_season_path,
+                           "/Merluccius_merluccius/obs_landKg_hake_season",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by metier by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Merluccius_land_by_metier_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="HKE")
+
+Merluccius_land_kg_by_metier_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Merluccius_land_by_metier_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,metier_isis,Landings_kg) %>%
+    group_by(year,metier_isis,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Merluccius_land_kg_by_metier_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Merluccius_land_kg_by_metier_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Merluccius_land_kg_by_metier_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_metier_season_path,
+                           "/Merluccius_merluccius/obs_landKg_hake_season_metier",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+### *Nephrops norvegicus* {.tabset}
+
+Reading objects from stock assessments containing catches by length class and landings by season:
+
+```{r}
+Nephrops_catch_n_at_length_raw <- read.table(file = paste0(assess_path ,"/Nephrops_norvegicus/catch_nep.csv"),
+                                             skip = 3,sep=";")[,1:9]
+names(Nephrops_catch_n_at_length_raw) <- c("l_class","2015","2016","2017","2018","2019","2020","2021","2022")
+
+Nephrops_land_kg_by_season_raw <- read.table(file = paste0(assess_path ,"/Nephrops_norvegicus/land_ByMonthByMetier.csv"),
+                                             header=TRUE,
+                                             sep=";",
+                                             dec=",")
+
+```
+
+As well as the accessibility matrix from Vigier et al., 2022:
+
+```{r}
+Neprops_accessibility_vigier22 <- read.table(file =  paste0(vigier_path,"/AccessibilityNephrops_Vigier22.csv"),
+                                             sep=";")
+```
+
+#### Catch by group
+
+Computing coefficient of accessibility by sex:
+
+```{r}
+SexCoeff <- Neprops_accessibility_vigier22 %>%
+    select(-V9) %>%
+    mutate(group = 0:57) %>%
+    pivot_longer(cols=-group) %>%
+    group_by(group) %>%
+    summarise(access=mean(value)) %>%
+    ungroup() %>%
+    mutate(sex=if_else(group<=34,"male","female")) %>%
+    mutate(l_class = if_else(sex == "male", 
+                             10 + group*2,
+                             12 + (group-35)*2)) %>%
+    select(-group) %>%
+    pivot_wider(names_from = sex, values_from = access) %>%
+    mutate(propMale = case_when(l_class == 10 ~ 1,
+                                0 < l_class & l_class <= 56 ~ male/(male+female),
+                                l_class > 56 ~ 1 )) %>%
+    select(l_class, propMale)
+
+```
+
+Computing catch in number by length class
+
+```{r}
+
+Nephrops_catch_n <- Nephrops_catch_n_at_length_raw %>% 
+  pivot_longer(cols=-1,names_to = "year",
+               values_to = "catch_thousands") %>%
+  mutate(catch_n=catch_thousands*1000) %>%
+  mutate(l_class=if_else(l_class %% 2 == 0, 
+                         l_class, 
+                         l_class - 1)) %>%
+  select(l_class,year,catch_n) %>%
+  group_by(year,l_class) %>%
+  summarise_all(sum) %>%
+  ungroup() 
+```
+
+Apply the sex ratio and get the capture by group isis
+
+```{r}
+Nephrops_catch_n_groupisis <- merge(Nephrops_catch_n,SexCoeff) %>% 
+  mutate(male = catch_n * propMale,
+         female = catch_n * (1-propMale)) %>%
+  select(-c(catch_n,propMale)) %>%
+  pivot_longer(cols = c(male,female),
+               values_to = "catch_n", 
+               names_to = "sex") %>%
+  mutate(group = case_when(l_class == 10 ~ 0,
+                           0 < l_class & sex == "male" ~ (l_class - 10)/2,
+                           0 < l_class & l_class <= 56 ~ 35 + (l_class - 12)/2)) %>%
+  drop_na() %>%
+  group_by(group,year) %>%
+  summarise(catch_n=sum(catch_n)) %>%
+  ungroup()
+
+Nephrops_catch_n_by_group_isis_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_n <- Nephrops_catch_n_groupisis %>%
+    filter(year==thisYear) %>%
+    rename(obs=catch_n) %>%
+    select(year,group,obs)
+  
+ 
+  Nephrops_catch_n_by_group_isis_list[[i]] <- Dat_n
+  
+  print(Dat_n)
+  }
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Nephrops_catch_n_by_group_isis_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+    Dat_n <- Nephrops_catch_n_by_group_isis_list [[i]] %>% select(-year)
+  
+    saveRDS(Dat_n,
+            file = paste0(catch_by_groupisis_path,
+                          "/Nephrops_norvegicus/obs_catchN_nephrops_groupisis",
+                          thisYear,
+                          ".rds"))
+    
+  }
+}
+```
+
+#### Landings by season
+
+Computation of total landings by seasons:
+
+```{r}
+Nephrops_land_kg_season <- Nephrops_land_kg_by_season_raw %>%
+  as.data.frame() %>%
+  pivot_longer(cols=c("MIS","OTBDEF","OTBNEP","OTTDEF","OTTNEP"),
+               names_to = "metier") %>%
+  mutate(land_kg = value * 1000) %>%
+  mutate(Season =  1 + (MOIS - 1)%/%3) %>%
+  select(Year,Season,land_kg) %>%
+  rename(year=Year)
+
+Nephrops_land_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Nephrops_land_kg_season %>%
+    filter(year==thisYear) %>%
+    group_by(year,Season) %>%
+    summarise_all(sum) %>%
+    ungroup() %>%
+    rename(obs=land_kg) %>%
+    select(year,Season,obs)
+  
+  Nephrops_land_kg_by_season_list[[i]] <- Dat_kg
+  print(Dat_kg)
+  
+  }
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Nephrops_land_kg_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  if(nrow(thisYear)==1){
+    Dat_kg <- Nephrops_land_kg_by_season_list [[i]] %>% select(-year)
+  
+    saveRDS(Dat_kg,
+            file = paste0(catch_by_season_path,
+                          "/Nephrops_norvegicus/obs_landKg_nephrops_season",
+                          thisYear,
+                          ".rds"))
+    
+  }
+}
+```
+
+#### Landings by metier
+
+Computation of landings by metier in kg by metier (as defined in ISIS-Fish model):
+
+```{r}
+Nephrops_LandByMet_kg <- land_fleet_ctry_met_seas %>% 
+  filter(species == "NEP")
+  
+Nephrops_LandByMet_kg_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  Dat_kg <- Nephrops_LandByMet_kg  %>%
+    filter(year==thisYear) %>%
+    group_by(year,metier_isis) %>%
+    summarise(landing_kg=sum(Landings_kg)) %>%
+    ungroup()
+  
+  Nephrops_LandByMet_kg_list[[i]] <- Dat_kg
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Nephrops_LandByMet_kg_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  Dat_kg <- Nephrops_LandByMet_kg_list[[i]] %>% select(-year)
+  if(nrow(thisYear) > 0){
+    saveRDS(Dat_kg,
+          file = paste0(catch_by_metier_path,
+                        "/Nephrops_norvegicus/obs_landKg_nephrops_metier",
+                        thisYear$year,
+                        ".rds"))
+  }
+  
+}
+```
+
+#### Landings by country
+
+Computation of landings by country from intercatch:
+
+```{r}
+Nephrops_land_by_country <- land_fleet_ctry_met_seas %>%
+  filter(species=="NEP")
+
+Nephrops_land_kg_by_country_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Nephrops_land_by_country %>%
+    filter(year==thisYear) %>%
+    select(year,Country,Landings_kg) %>%
+    group_by(year,Country) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Nephrops_land_kg_by_country_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Nephrops_land_kg_by_country_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Nephrops_land_kg_by_country_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_country_path,
+                           "/Nephrops_norvegicus/obs_landKg_nephrops_country",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Nephrops_land_by_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="NEP")
+
+Nephrops_land_kg_by_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Nephrops_land_by_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,Landings_kg) %>%
+    group_by(year,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Nephrops_land_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Nephrops_land_kg_by_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Nephrops_land_kg_by_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_season_path,
+                           "/Nephrops_norvegicus/obs_landKg_nephrops_season",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+#### Landings by metier by season
+
+Computation of landings by season from intercatch:
+
+```{r}
+Nephrops_land_by_metier_season <- land_fleet_ctry_met_seas %>%
+  filter(species=="NEP")
+
+Nephrops_land_kg_by_metier_season_list <- list()
+for(i in seq(length(years))){
+  thisYear <- years[i]
+  
+  Dat_kg <- Nephrops_land_by_metier_season %>%
+    filter(year==thisYear) %>%
+    select(year,Season,metier_isis,Landings_kg) %>%
+    group_by(year,metier_isis,Season) %>%
+    summarise_all(sum) %>%
+    ungroup()
+  
+  Nephrops_land_kg_by_metier_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(length(years))){
+  thisYear <- Nephrops_land_kg_by_metier_season_list[[i]]  %>% 
+    select(year) %>% 
+    distinct()
+  
+  if(nrow(thisYear)==1){
+    Dat_kg <- Nephrops_land_kg_by_metier_season_list [[i]] %>% select(-year)
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_metier_season_path,
+                           "/Nephrops_norvegicus/obs_landKg_nephrops_season_metier",
+                           thisYear,
+                           ".rds"))
+  }
+  
+}
+```
+
+## Analysis by fleet {.tabset}
+### FR \<12m {.tabset}
+
+Fleet data for french vessels smaller than 12m:
+
+```{r}
+this_group <- 'inf12'
+fleet_data <- land_fleet_ctry_met_seas %>% filter(fleet_group == this_group)
+fleets <- fleet_data %>% select(fleet_isis) %>% distinct() 
+```
+
+#### Landings by species
+
+Computation of landings by species:
+
+```{r,message=FALSE}
+land_kg_by_species_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,species,Landings_kg) %>%
+    group_by(year,fleet_isis,species) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_species_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_species_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_species_list [[i]]
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_species_path,
+                            "/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_species.rds"))
+  }
+  
+}
+```
+
+#### Landings by metier
+
+Computation of landings by metier in kg by metier (as defined in ISIS-Fish model):
+
+```{r}
+LandByMet_kg_list <- list()
+for(i in seq(nrow(fleets))){
+  thisFleet <- fleets$fleet_isis[i]
+  Dat_kg <- fleet_data  %>%
+    filter(fleet_isis==thisFleet) %>%
+    group_by(year,fleet_isis,metier_isis) %>%
+    summarise(landing_kg=sum(Landings_kg)) %>%
+    ungroup()
+  
+  LandByMet_kg_list[[i]] <- Dat_kg
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  
+   thisFleet <- LandByMet_kg_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+ 
+  Dat_kg <-LandByMet_kg_list[[i]]
+  if(nrow(Dat_kg) > 0){
+    saveRDS(Dat_kg,
+          file = paste0(catch_by_metier_path,
+                        "/fleets/",
+                        this_group,
+                        "/obs_",
+                        thisFleet$fleet_isis,
+                        "_landKg_by_metier.rds"))
+  }
+}
+```
+
+#### Landings by season
+
+Computation of landings by season from intercatch:
+
+```{r,message=FALSE}
+land_kg_by_season_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,Season,Landings_kg) %>%
+    group_by(year,fleet_isis,Season) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_season_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_season_list [[i]]
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_season_path,
+                            "/fleets/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_season.rds"))
+  }
+  
+}
+```
+
+#### Landings by species by season
+
+Computation of landings by season from intercatch:
+
+```{r,message=FALSE}
+land_kg_by_species_season_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,species,Season,Landings_kg) %>%
+    group_by(year,fleet_isis,species,Season) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_species_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_species_season_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_species_season_list[[i]]
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_species_season_path,
+                            "/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_species_by_season.rds"))
+  }
+  
+}
+```
+
+#### Landings by metier by season
+
+Computation of landings by season from intercatch:
+
+```{r,message=FALSE}
+land_kg_by_metier_season_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,Season,metier_isis,Landings_kg) %>%
+    group_by(year,fleet_isis,metier_isis,Season) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_metier_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_metier_season_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_metier_season_list [[i]]
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_metier_season_path,
+                          "/fleets/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_metier_by_season.rds"))
+  }
+  
+}
+```
+
+### FR \>12m {.tabset}
+
+Fleet data for french vessels larger than 12m:
+
+```{r}
+this_group <- 'sup12'
+fleet_data <- land_fleet_ctry_met_seas %>% 
+  merge(prop_pisc) %>%
+  mutate(Landings_kg = if_else(species=='MNZ',Landings_kg * prop, Landings_kg)) 
+fleets <- fleet_data %>% select(fleet_isis) %>% distinct() 
+```
+
+#### Landings by species
+
+Computation of landings by species:
+
+```{r,message=FALSE}
+land_kg_by_species_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,species,Landings_kg) %>%
+    group_by(year,fleet_isis,species) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_species_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_species_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_species_list [[i]]
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_species_path,
+                            "/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_species.rds"))
+  }
+  
+}
+```
+
+#### Landings by metier
+
+Computation of landings by metier in kg by metier (as defined in ISIS-Fish model):
+
+```{r}
+LandByMet_kg_list <- list()
+for(i in seq(nrow(fleets))){
+  thisFleet <- fleets$fleet_isis[i]
+  Dat_kg <- fleet_data  %>%
+    filter(fleet_isis==thisFleet) %>%
+    group_by(year,fleet_isis,metier_isis) %>%
+    summarise(landing_kg=sum(Landings_kg)) %>%
+    ungroup()
+  
+  LandByMet_kg_list[[i]] <- Dat_kg
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  
+   thisFleet <- LandByMet_kg_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+ 
+  Dat_kg <-LandByMet_kg_list[[i]]
+  if(nrow(Dat_kg) > 0){
+    saveRDS(Dat_kg,
+          file = paste0(catch_by_metier_path,
+                        "/fleets/",
+                        this_group,
+                        "/obs_",
+                        thisFleet$fleet_isis,
+                        "_landKg_by_metier.rds"))
+  }
+}
+```
+
+#### Landings by season
+
+Computation of landings by season from intercatch:
+
+```{r,message=FALSE}
+land_kg_by_season_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,Season,Landings_kg) %>%
+    group_by(year,fleet_isis,Season) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_season_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_season_list [[i]]
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_season_path,
+                            "/fleets/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_season.rds"))
+  }
+  
+}
+```
+
+#### Landings by species by season
+
+Computation of landings by season from intercatch:
+
+```{r,message=FALSE}
+land_kg_by_species_season_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,species,Season,Landings_kg) %>%
+    group_by(year,fleet_isis,species,Season) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_species_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_species_season_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_species_season_list[[i]]
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_species_season_path,
+                            "/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_species_by_season.rds"))
+  }
+  
+}
+```
+
+#### Landings by metier by season
+
+Computation of landings by season from intercatch:
+
+```{r,message=FALSE}
+land_kg_by_metier_season_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,Season,metier_isis,Landings_kg) %>%
+    group_by(year,fleet_isis,metier_isis,Season) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_metier_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_metier_season_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_metier_season_list [[i]]
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_metier_season_path,
+                          "/fleets/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_metier_by_season.rds"))
+  }
+  
+}
+```
+
+### Foreign {.tabset}
+
+Fleet data for foreign vessels:
+
+```{r}
+this_group <- 'foreign'
+fleet_data <- land_fleet_ctry_met_seas %>% filter(fleet_group == this_group)
+fleets <- fleet_data %>% select(fleet_isis) %>% distinct() 
+```
+
+#### Landings by species
+
+Computation of landings by species:
+
+```{r,message=FALSE}
+land_kg_by_species_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,species,Landings_kg) %>%
+    group_by(year,fleet_isis,species) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_species_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_species_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_species_list [[i]]
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_species_path,
+                            "/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_species.rds"))
+  }
+  
+}
+```
+
+#### Landings by metier
+
+Computation of landings by metier in kg by metier (as defined in ISIS-Fish model):
+
+```{r}
+LandByMet_kg_list <- list()
+for(i in seq(nrow(fleets))){
+  thisFleet <- fleets$fleet_isis[i]
+  Dat_kg <- fleet_data  %>%
+    filter(fleet_isis==thisFleet) %>%
+    group_by(year,fleet_isis,metier_isis) %>%
+    summarise(landing_kg=sum(Landings_kg)) %>%
+    ungroup()
+  
+  LandByMet_kg_list[[i]] <- Dat_kg
+  print(Dat_kg)
+}
+
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  
+   thisFleet <- LandByMet_kg_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+ 
+  Dat_kg <-LandByMet_kg_list[[i]]
+  if(nrow(Dat_kg) > 0){
+    saveRDS(Dat_kg,
+          file = paste0(catch_by_metier_path,
+                        "/fleets/",
+                        this_group,
+                        "/obs_",
+                        thisFleet$fleet_isis,
+                        "_landKg_by_metier.rds"))
+  }
+}
+```
+
+#### Landings by season
+
+Computation of landings by season from intercatch:
+
+```{r,message=FALSE}
+land_kg_by_season_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,Season,Landings_kg) %>%
+    group_by(year,fleet_isis,Season) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_season_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_season_list [[i]]
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_season_path,
+                            "/fleets/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_season.rds"))
+  }
+  
+}
+```
+
+#### Landings by species by season
+
+Computation of landings by season from intercatch:
+
+```{r,message=FALSE}
+land_kg_by_species_season_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,species,Season,Landings_kg) %>%
+    group_by(year,fleet_isis,species,Season) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_species_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_species_season_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_species_season_list[[i]]
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_species_season_path,
+                            "/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_species_by_season.rds"))
+  }
+  
+}
+```
+
+#### Landings by metier by season
+
+Computation of landings by season from intercatch:
+
+```{r,message=FALSE}
+land_kg_by_metier_season_list <- list()
+for(i in seq(nrow(fleets))){
+  
+  thisFleet <- fleets$fleet_isis[i]
+  
+  Dat_kg <- fleet_data %>%
+    filter(fleet_isis==thisFleet) %>%
+    select(year,fleet_isis,Season,metier_isis,Landings_kg) %>%
+    group_by(year,fleet_isis,metier_isis,Season) %>%
+    summarise(Landings_kg = sum(Landings_kg)) %>%
+    ungroup()
+  
+  land_kg_by_metier_season_list[[i]] <- Dat_kg
+  
+  print(Dat_kg)
+}
+```
+
+Save as .rds:
+
+```{r}
+for(i in seq(nrow(fleets))){
+  thisFleet <- land_kg_by_metier_season_list[[i]]  %>% 
+    select(fleet_isis) %>% 
+    distinct()
+  
+  if(nrow(thisFleet)==1){
+    Dat_kg <- land_kg_by_metier_season_list [[i]]
+  
+  
+    saveRDS(Dat_kg,
+             file = paste0(land_by_metier_season_path,
+                          "/fleets/",
+                            this_group,
+                            "/obs_",
+                             thisFleet$fleet_isis,
+                            "_landKg_by_metier_by_season.rds"))
+  }
+  
+}
+```
