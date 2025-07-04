@@ -1,0 +1,5 @@
+boot.overlap            Nonparametric Bootstrap to estimate the
+                        overlapping area
+final.plot              Final plot
+overlap                 Estimate the overlapping measure.
+ovmult                  Multiple overlapping estimation

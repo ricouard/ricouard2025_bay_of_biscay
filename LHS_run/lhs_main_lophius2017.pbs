@@ -1,0 +1,100 @@
+#!/bin/bash
+#PBS -N ISIS_LHS_MACCO
+#PBS -q mpi_2
+#PBS -l walltime=48:0:0
+#PBS -S /bin/bash
+#PBS -v DATAWORK,SCRATCH
+#PBS -j oe
+#PBS -o debug/debugPBS_lophius2017.log
+
+# ATTENTION: j’utilise BASH pour créer des raccourcis en tant que fonctions,
+# tandis que CSH ne permet pas de les créer.
+# Donc ce script ne peut pas être réécrit pour CSH
+
+###############################################################################
+
+# aller dans le bon dossier
+cd $PBS_O_WORKDIR
+
+export RERUN_SIMUL=true
+
+# nom simulation (pour utiliser dans R)
+export SIMUL_BASENAME="Calib_Lophius_2017_Prep"
+# full simul name = base name + iteration
+
+# simulation blanche de base (absolute path, see myIsis for reason)
+export SIMUL_FILE=$PBS_O_WORKDIR/InputsMACCO/$SIMUL_BASENAME.zip
+
+# endroit où sauvegardés des simul (pour utiliser dans R)
+export ISIS_BD=$SCRATCH/myISISdb
+# de préférence sur DATAWORK ou SCRATCH
+
+# exécutable ISIS
+export ISIS_BIN=/appli/emh-commun/isis-fish/isis-fish-4.4.8.0/isis-fish-4.4.8.0.jar
+
+# exécutable JAVA
+export JAVA_BIN=/appli/emh-commun/isis-fish/jdk17/bin/java
+
+# shortcut to call ISIS from R
+myIsis () { # pass the full simul name as the 1st arg
+	# ATTENTION: when this function is called, we are in RUN_*/i* folder
+	# relative paths are a bit difficult, so I use absolute paths
+	$JAVA_BIN -Xmx2G -XX:+UseSerialGC -jar $ISIS_BIN \
+		--option launch.ui false \
+		--option perform.vcsupdate false \
+		--option perform.migration false \
+		--option perform.cron false \
+		--option isis.home.directory $ISIS_BD \
+		--simulateWithSimulation $1 $SIMUL_FILE
+	# ces options viennent du code source ISIS > src/main/resources/templates/ssh/qsub-script.ftl
+	# cf README pour la raison de fixer mémoire java à 2GB
+}
+export -f myIsis
+
+# calculer le nombre de cœurs, car utiliser $NCPUS pas fiable (cf tout en bas)
+export mpiproc=$(cat $PBS_NODEFILE | wc -l)
+# normalement = 28 × nº queue MPI choisie
+
+###############################################################################
+
+# supprimer qq fichiers
+rm -f debug/debugR_lophius2017.log debug/debugPBS_lophius2017.log
+mkdir -p $ISIS_BD
+
+if [ "$RERUN_SIMUL" = true ] ; then
+	rm -rf "RUN_${SIMUL_BASENAME}"
+	# puis supprimer les simul précédentes
+	find $ISIS_BD/isis-database/simulations -type d -name "${SIMUL_BASENAME}_i*" -prune -exec rm -rf {} +
+fi
+
+. /usr/share/Modules/3.2.10/init/bash
+module purge
+module load R/3.6.3-intel-cc-17.0.2.174
+module list
+# enlever la version pour avoir R plus récent, mais à vérfier si {snow} est installé
+
+# shortcut to call R, for MPI only
+myR () {
+	mpiexec -np $mpiproc $(R RHOME)/library/snow/RMPISNOW --no-restore --no-save --quiet $@
+	# shouldn’t use --vanilla because errors don’t stop execution
+}
+
+time myR -f lhs_run_lophius_2017.R &> debug/debugR_lophius2017.log
+
+###############################################################################
+
+echo simul: $SIMUL_BASENAME
+echo job id: $PBS_JOBID
+echo job name: $PBS_JOBNAME
+echo
+
+echo job submitted: $(qstat -f $PBS_JOBID | grep qtime) $(date +'%Z')
+echo job started: $(qstat -f $PBS_JOBID | grep stime) $(date +'%Z')
+echo current dir: $(pwd)
+echo originating queue: $PBS_O_QUEUE
+echo executing queue: $PBS_QUEUE
+echo current machine: $PBS_O_HOST
+echo how many cores: $NCPUS
+echo how many threads: $OMP_NUM_THREADS
+echo how many MPI process: $mpiproc
+echo

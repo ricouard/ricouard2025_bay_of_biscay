@@ -1,0 +1,12 @@
+MCMC_data               Simulated MCMC output data
+MCMC_data2              Simulated MCMC output data - #2
+MCMCchains              Extract posterior chains from MCMC output
+MCMCdiag                Diagnostics summaries for models
+MCMCplot                Caterpillar plots of posterior distributions
+                        from MCMC output
+MCMCpstr                Summarize and extract posterior chains from
+                        MCMC output while preserving parameter
+                        structure
+MCMCsummary             Summarize MCMC output
+MCMCtrace               Trace and density plots from MCMC output
+MCMCvis                 The 'MCMCvis' package

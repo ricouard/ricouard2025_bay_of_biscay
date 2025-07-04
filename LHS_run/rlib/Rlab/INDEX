@@ -1,0 +1,77 @@
+Bernoulli               The Bernoulli Distribution
+Exponential             The Exponential Distribution
+Gamma                   The Gamma Distribution
+Rlab                    Rlab - Functions and Datasets for ST 370 at
+                        North Carolina State University
+SpGravity               Specific gravity measurements
+Weibull                 The Weibull Distribution
+actuator                Actuator force experiment
+airplane                Distances flown by paper airplanes in an
+                        experiment with four treatments.
+alka                    Alka-Seltzer dissoloving times
+bplot                   boxplot
+bplot.xy                Boxplots for conditional distribution
+bread                   Bread rising experiment
+bread2                  Bread rising experiment
+cancer                  Cigarette smoking and mortality
+capac                   Capacitance of different shaped capacitors.
+cavendish               Cavendish's 1798 determinations of the density
+                        of the earth
+climate                 Climate and geographical data for 50 of the
+                        largest US cities.
+college                 Statistics on colleges in 15 states.
+count                   Counts elements which meet specified conditions
+draft                   1970 Vietnam draft lottery summary
+drill                   Drill testing results
+earthq                  Earthquake data
+etruscan                Skull widths for ancient Etruscans and modern
+                        Italians
+framerate               Video card frame rates
+ftp                     File transfer times
+ftptime                 Forty FTP times
+golf                    Golf performance data
+hplot                   Histogram allowing forced number of bins
+insulate                Effects of house insulation
+jet                     Jet (actuator) force experiment
+kurt                    4th moment kurtosis ratio
+lplot                   Label plot
+ls.rlab                 List of objects in Rlab
+magnet                  Magnetic force of an electomagnet as a function
+                        of voltage and number of wire turns.
+marathon                Winning times from New York City marathon
+means                   Computes one-way and two-way means tables
+metalcut                Metal cutting performance
+mfit                    Computes main and interaction fitted effects
+michelson               Results from Michelson's determination of the
+                        velocity of light in air.
+monarch                 Post coronation lifespan
+mplot                   Plots factor means
+ncsu                    Number of degrees granted at ncsu by year.
+oil                     Synthetic versus Conventional Oil
+ozone                   Monthly mean concentrations of ozone.
+ping                    Internet ping times
+popcorn                 A 2x4 experiment to evaluate popcorn
+                        preparation.
+precip                  Average monthly rainfall
+quake                   Earthquake strengths and locations
+raleigh.snow            Annual snowfall in Raleigh, NC
+raleigh.temp            Average monthly temperatures, 1949-1988.
+randomdata              Random data used in Lab 6
+salt                    The effect of salt on ice melting
+skew                    3rd moment skewness ratio
+solar                   Solar cell's output voltage
+stats                   Calculate summary statistics
+stats2                  Calculate summary statistics
+us.age                  American age data
+us.pop                  American population data
+view                    View first rows of a data set
+viscosity               Results from students experiments using water,
+                        oil and shampoo.
+vocab                   Children's vocabulary by age
+webhost                 Comparison of four different web hosts
+wire                    Wire resistance experiment
+xline                   Draw a vertical line
+yarn                    Yarn tensile strength experiment
+yarnred                 Yarn tensile strength experiment - averaged
+                        measurements
+yline                   Draw horizontal lines
