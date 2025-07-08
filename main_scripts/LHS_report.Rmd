@@ -1,0 +1,1426 @@
+---
+title: "Analysing LHS outputs"
+author: "Antoine Ricouard"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Loading necessary packages and functions:
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(data.table, include.only = c("rbindlist"))
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr, include.only = c("pivot_longer"))
+library(purrr, include.only = c("map_dfr"))
+library(doBy, include.only = c("which.minn"))
+library(doParallel)
+library(here)
+library(scales)
+library(RColorBrewer)
+library(stringr)
+library(readr)
+
+source(paste0(here(),"/R_fun/lhs_report_fun.R"))
+
+
+```
+
+Before starting, we specify a number of paths. First, the path of the LHS outputs storage:
+
+```{r}
+res_lhs_path <- paste0(here(),"/LHS_run/res_rds")
+```
+
+Then, the path of the repertory where to save accessibility matrices:
+```{r}
+save_path <- paste0(here(),"/accessibility_values/q1_LHS_outputs")
+```
+
+For some species, we must perform a conversion from length class to age class. The conversion tables will be exported in that directory:
+```{r}
+length_age_tables_path <- paste0(here(),"/input_data/age_length_corresp")
+```
+
+## Analysis species by species {.tabset}
+
+### *Solea solea* {.tabset}
+#### 2015
+Read the results of the simulations of the LHS sampling:
+```{r}
+Solea2015_raw <- readRDS(paste0(res_lhs_path,"/res_rds_solea2015/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+Solea2015_ObsSim_data <- raw_to_ObsSim(raw_data = Solea2015_raw, 
+                                       species = "Solea solea", 
+                                       year = 2015)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Solea2015_ObsSim_std_data <- Solea2015_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Solea2015_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Solea2015_best_set <- best_set(Solea2015_ObsSim_std_data)
+print(Solea2015_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Solea2015_best_set)
+```
+
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Solea2015_best_set,save_path)
+save_q_noseason_semantics(Solea2015_best_set,save_path)
+```
+
+#### 2016
+Read the results of the simulations of the LHS sampling:
+```{r}
+Solea2016_raw <- readRDS(paste0(res_lhs_path,"/res_rds_solea2016/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Solea2016_ObsSim_data <- raw_to_ObsSim(raw_data = Solea2016_raw, 
+                                       species = "Solea solea", 
+                                       year = 2016)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Solea2016_ObsSim_std_data <- Solea2016_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Solea2016_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Solea2016_best_set <- best_set(Solea2016_ObsSim_std_data)
+print(Solea2016_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Solea2016_best_set)
+```
+
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Solea2016_best_set,save_path)
+save_q_noseason_semantics(Solea2016_best_set,save_path)
+```
+
+#### 2017
+Read the results of the simulations of the LHS sampling:
+```{r}
+Solea2017_raw <- readRDS(paste0(res_lhs_path,"/res_rds_solea2017/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Solea2017_ObsSim_data <- raw_to_ObsSim(raw_data = Solea2017_raw, 
+                                       species = "Solea solea", 
+                                       year = 2017)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Solea2017_ObsSim_std_data <- Solea2017_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Solea2017_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Solea2017_best_set <- best_set(Solea2017_ObsSim_std_data)
+print(Solea2017_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Solea2017_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Solea2017_best_set,save_path)
+save_q_noseason_semantics(Solea2017_best_set,save_path)
+```
+
+
+#### 2018
+Read the results of the simulations of the LHS sampling:
+```{r}
+Solea2018_raw <- readRDS(paste0(res_lhs_path,"/res_rds_solea2018/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Solea2018_ObsSim_data <- raw_to_ObsSim(raw_data = Solea2018_raw, 
+                                       species = "Solea solea", 
+                                       year = 2018)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Solea2018_ObsSim_std_data <- Solea2018_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Solea2018_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Solea2018_best_set <- best_set(Solea2018_ObsSim_std_data)
+print(Solea2018_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Solea2018_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Solea2018_best_set,save_path)
+save_q_noseason_semantics(Solea2018_best_set,save_path)
+```
+
+#### Summary
+Here, we gather the estimations for all years, compute the mean and plot the accessibility obtained for each population group:
+```{r}
+Solea_best_sets <- rbind(Solea2015_best_set,
+                         Solea2016_best_set,
+                         Solea2017_best_set,
+                         Solea2018_best_set)
+Solea_mean_q <- Solea_best_sets %>% 
+  group_by(q_name,species) %>%
+  summarise(q=mean(q)) %>%
+  ungroup()
+plot_q_estim(Solea_best_sets,Solea_mean_q)
+```
+
+Save the mean accessibility matrix as .csv:
+```{r}
+save_qmean_noseason_csv(Solea_mean_q,save_path)
+```
+
+
+### *Raja clavata* {.tabset}
+#### 2015
+Read the results of the simulations of the LHS sampling:
+```{r}
+Raja2015_raw <- readRDS(paste0(res_lhs_path,"/res_rds_raja2015/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Raja2015_ObsSim_data <- raw_to_ObsSim(raw_data = Raja2015_raw, 
+                                       species = "Raja clavata", 
+                                       year = 2015)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Raja2015_ObsSim_std_data <- Raja2015_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Raja2015_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Raja2015_best_set <- best_set(Raja2015_ObsSim_std_data)
+print(Raja2015_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Raja2015_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Raja2015_best_set,save_path)
+save_q_noseason_semantics(Raja2015_best_set,save_path)
+```
+
+#### 2016
+Read the results of the simulations of the LHS sampling:
+```{r}
+Raja2016_raw <- readRDS(paste0(res_lhs_path,"/res_rds_raja2016/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Raja2016_ObsSim_data <- raw_to_ObsSim(raw_data = Raja2016_raw, 
+                                       species = "Raja clavata", 
+                                       year = 2016)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Raja2016_ObsSim_std_data <- Raja2016_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Raja2016_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Raja2016_best_set <- best_set(Raja2016_ObsSim_std_data)
+print(Raja2016_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Raja2016_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Raja2016_best_set,save_path)
+save_q_noseason_semantics(Raja2016_best_set,save_path)
+```
+
+#### 2017
+Read the results of the simulations of the LHS sampling:
+```{r}
+Raja2017_raw <- readRDS(paste0(res_lhs_path,"/res_rds_raja2017/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Raja2017_ObsSim_data <- raw_to_ObsSim(raw_data = Raja2017_raw, 
+                                       species = "Raja clavata", 
+                                       year = 2017)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Raja2017_ObsSim_std_data <- Raja2017_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Raja2017_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Raja2017_best_set <- best_set(Raja2017_ObsSim_std_data)
+print(Raja2017_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Raja2017_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Raja2017_best_set,save_path)
+save_q_noseason_semantics(Raja2017_best_set,save_path)
+```
+
+
+#### 2018
+Read the results of the simulations of the LHS sampling:
+```{r}
+Raja2018_raw <- readRDS(paste0(res_lhs_path,"/res_rds_raja2018/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Raja2018_ObsSim_data <- raw_to_ObsSim(raw_data = Raja2018_raw, 
+                                       species = "Raja clavata", 
+                                       year = 2018)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Raja2018_ObsSim_std_data <- Raja2018_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Raja2018_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Raja2018_best_set <- best_set(Raja2018_ObsSim_std_data)
+print(Raja2018_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Raja2018_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Raja2018_best_set,save_path)
+save_q_noseason_semantics(Raja2018_best_set,save_path)
+```
+
+#### Summary
+Here, we gather the estimations for all years, compute the mean and plot the accessibility obtained for each population group:
+```{r}
+Raja_best_sets <- rbind(Raja2015_best_set,
+                         Raja2016_best_set,
+                         Raja2017_best_set,
+                         Raja2018_best_set
+                        )
+Raja_mean_q <- Raja_best_sets %>% 
+  group_by(q_name,species) %>%
+  summarise(q=mean(q)) %>%
+  ungroup()
+plot_q_estim(Raja_best_sets,Raja_mean_q)
+```
+Save the mean accessibility matrix as .csv:
+```{r}
+save_qmean_noseason_csv(Raja_mean_q,save_path)
+```
+
+### *Lophius piscatorius* {.tabset}
+#### 2015
+Read the results of the simulations of the LHS sampling:
+```{r}
+Lophius2015_raw <- readRDS(paste0(res_lhs_path,"/res_rds_lophius2015/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Lophius2015_ObsSim_data <- raw_to_ObsSim(raw_data = Lophius2015_raw, 
+                                       species = "Lophius piscatorius", 
+                                       year = 2015)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Lophius2015_ObsSim_std_data <- Lophius2015_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Lophius2015_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Lophius2015_best_set <- best_set(Lophius2015_ObsSim_std_data)
+print(Lophius2015_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Lophius2015_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Lophius2015_best_set,save_path)
+save_q_noseason_semantics(Lophius2015_best_set,save_path)
+```
+
+#### 2016
+Read the results of the simulations of the LHS sampling:
+```{r}
+Lophius2016_raw <- readRDS(paste0(res_lhs_path,"/res_rds_lophius2016/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Lophius2016_ObsSim_data <- raw_to_ObsSim(raw_data = Lophius2016_raw, 
+                                       species = "Lophius piscatorius", 
+                                       year = 2016)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Lophius2016_ObsSim_std_data <- Lophius2016_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Lophius2016_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Lophius2016_best_set <- best_set(Lophius2016_ObsSim_std_data)
+print(Lophius2016_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Lophius2016_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Lophius2016_best_set,save_path)
+save_q_noseason_semantics(Lophius2016_best_set,save_path)
+```
+
+#### 2017
+Read the results of the simulations of the LHS sampling:
+```{r}
+Lophius2017_raw <- readRDS(paste0(res_lhs_path,"/res_rds_lophius2017/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Lophius2017_ObsSim_data <- raw_to_ObsSim(raw_data = Lophius2017_raw, 
+                                       species = "Lophius piscatorius", 
+                                       year = 2017)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Lophius2017_ObsSim_std_data <- Lophius2017_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Lophius2017_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Lophius2017_best_set <- best_set(Lophius2017_ObsSim_std_data)
+print(Lophius2017_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Lophius2017_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Lophius2017_best_set,save_path)
+save_q_noseason_semantics(Lophius2017_best_set,save_path)
+```
+
+
+#### 2018
+Read the results of the simulations of the LHS sampling:
+```{r}
+Lophius2018_raw <- readRDS(paste0(res_lhs_path,"/res_rds_lophius2018/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Lophius2018_ObsSim_data <- raw_to_ObsSim(raw_data = Lophius2018_raw, 
+                                       species = "Lophius piscatorius", 
+                                       year = 2018)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Lophius2018_ObsSim_std_data <- Lophius2018_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Lophius2018_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Lophius2018_best_set <- best_set(Lophius2018_ObsSim_std_data)
+print(Lophius2018_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Lophius2018_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Lophius2018_best_set,save_path)
+save_q_noseason_semantics(Lophius2018_best_set,save_path)
+```
+
+#### Summary
+Here, we gather the estimations for all years, compute the mean and plot the accessibility obtained for each population group:
+```{r}
+Lophius_best_sets <- rbind(Lophius2015_best_set,
+                         Lophius2016_best_set,
+                         Lophius2017_best_set,
+                         Lophius2018_best_set)
+Lophius_mean_q <- Lophius_best_sets %>% 
+  group_by(q_name,species) %>%
+  summarise(q=mean(q)) %>%
+  ungroup()
+plot_q_estim(Lophius_best_sets,Lophius_mean_q)
+```
+Save the mean accessibility matrix as .csv:
+```{r}
+save_qmean_noseason_csv(Lophius_mean_q,save_path)
+```
+
+### *Lepidorhombus whiffiagonis* {.tabset}
+#### 2015
+Read the results of the simulations of the LHS sampling:
+```{r}
+Lepidorhombus2015_raw <- readRDS(paste0(res_lhs_path,"/res_rds_lepidorhombus2015/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Lepidorhombus2015_ObsSim_data <- raw_to_ObsSim(raw_data = Lepidorhombus2015_raw, 
+                                       species = "Lepidorhombus whiffiagonis", 
+                                       year = 2015)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Lepidorhombus2015_ObsSim_std_data <- Lepidorhombus2015_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Lepidorhombus2015_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Lepidorhombus2015_best_set <- best_set(Lepidorhombus2015_ObsSim_std_data)
+print(Lepidorhombus2015_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Lepidorhombus2015_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Lepidorhombus2015_best_set,save_path)
+save_q_noseason_semantics(Lepidorhombus2015_best_set,save_path)
+```
+
+#### 2016
+Read the results of the simulations of the LHS sampling:
+```{r}
+Lepidorhombus2016_raw <- readRDS(paste0(res_lhs_path,"/res_rds_lepidorhombus2016/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Lepidorhombus2016_ObsSim_data <- raw_to_ObsSim(raw_data = Lepidorhombus2016_raw, 
+                                       species = "Lepidorhombus whiffiagonis", 
+                                       year = 2016)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Lepidorhombus2016_ObsSim_std_data <- Lepidorhombus2016_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Lepidorhombus2016_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Lepidorhombus2016_best_set <- best_set(Lepidorhombus2016_ObsSim_std_data)
+print(Lepidorhombus2016_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Lepidorhombus2016_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Lepidorhombus2016_best_set,save_path)
+save_q_noseason_semantics(Lepidorhombus2016_best_set,save_path)
+```
+
+#### 2017
+Read the results of the simulations of the LHS sampling:
+```{r}
+Lepidorhombus2017_raw <- readRDS(paste0(res_lhs_path,"/res_rds_lepidorhombus2017/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Lepidorhombus2017_ObsSim_data <- raw_to_ObsSim(raw_data = Lepidorhombus2017_raw, 
+                                       species = "Lepidorhombus whiffiagonis", 
+                                       year = 2017)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Lepidorhombus2017_ObsSim_std_data <- Lepidorhombus2017_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Lepidorhombus2017_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Lepidorhombus2017_best_set <- best_set(Lepidorhombus2017_ObsSim_std_data)
+print(Lepidorhombus2017_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Lepidorhombus2017_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Lepidorhombus2017_best_set,save_path)
+save_q_noseason_semantics(Lepidorhombus2017_best_set,save_path)
+```
+
+
+#### 2018
+Read the results of the simulations of the LHS sampling:
+```{r}
+Lepidorhombus2018_raw <- readRDS(paste0(res_lhs_path,"/res_rds_lepidorhombus2018/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Lepidorhombus2018_ObsSim_data <- raw_to_ObsSim(raw_data = Lepidorhombus2018_raw, 
+                                               species = "Lepidorhombus whiffiagonis", 
+                                               year = 2018)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Lepidorhombus2018_ObsSim_std_data <- Lepidorhombus2018_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Lepidorhombus2018_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Lepidorhombus2018_best_set <- best_set(Lepidorhombus2018_ObsSim_std_data)
+print(Lepidorhombus2018_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Lepidorhombus2018_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Lepidorhombus2018_best_set,save_path)
+save_q_noseason_semantics(Lepidorhombus2018_best_set,save_path)
+```
+
+#### Summary
+Here, we gather the estimations for all years, compute the mean and plot the accessibility obtained for each population group:
+```{r}
+Lepidorhombus_best_sets <- rbind(Lepidorhombus2015_best_set,
+                                 Lepidorhombus2016_best_set,
+                                 Lepidorhombus2017_best_set,
+                                 Lepidorhombus2018_best_set)
+Lepidorhombus_mean_q <- Lepidorhombus_best_sets %>% 
+  group_by(q_name,species) %>%
+  summarise(q=mean(q)) %>%
+  ungroup()
+plot_q_estim(Lepidorhombus_best_sets,Lepidorhombus_mean_q)
+```
+Save the mean accessibility matrix as .csv:
+```{r}
+save_qmean_noseason_csv(Lepidorhombus_mean_q,save_path)
+```
+
+### *Merluccius merluccius* {.tabset}
+#### 2015
+Read the results of the simulations of the LHS sampling:
+```{r}
+Merluccius2015_raw <- readRDS(paste0(res_lhs_path,"/res_rds_merluccius2015/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Merluccius2015_ObsSim_data <- raw_to_ObsSim(raw_data = Merluccius2015_raw, 
+                                            species = "Merluccius merluccius", 
+                                            year = 2015)
+```
+
+This species is structured in length instead of in age. To avoid interactions between group variables, we recompose the dataset to perform the optimisation by age, assuming that accessibility is homogeneous inside a same age class.
+```{r}
+Merluccius2015_ObsSim_byage_data <-age_aggreg(data = Merluccius2015_ObsSim_data,
+                                              save_conv_path = length_age_tables_path)
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+```{r}
+plotOF_merluccius(Merluccius2015_ObsSim_byage_data,log_scale = T) 
+```
+
+Let us compute the best value of parameter
+```{r}
+Merluccius2015_best_set <- best_set(Merluccius2015_ObsSim_byage_data)
+print(Merluccius2015_best_set)
+```
+
+Here we plot observed vs. simulated values in the best case (age wise):
+```{r}
+plot_obs_vs_sim_merluccius(Merluccius2015_best_set) 
+```
+
+Let us search the best parameter set globally :
+```{r}
+Merluccius2015_best_set_glob <- best_set_glob(Merluccius2015_ObsSim_byage_data)
+```
+
+Here we plot observed vs. simulated values in the best case (globally):
+```{r}
+plot_obs_vs_sim_merluccius(Merluccius2015_best_set_glob) 
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Merluccius2015_best_set,save_path)
+save_q_noseason_semantics(Merluccius2015_best_set,save_path)
+```
+
+
+#### 2016
+Read the results of the simulations of the LHS sampling:
+```{r}
+Merluccius2016_raw <- readRDS(paste0(res_lhs_path,"/res_rds_merluccius2016/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+Merluccius2016_ObsSim_data <- raw_to_ObsSim(raw_data = Merluccius2016_raw, 
+                                            species = "Merluccius merluccius", 
+                                            year = 2016)
+```
+
+This species is structured in length instead of in age. To avoid interactions between group variables, we recompose the dataset to perform the optimisation by age, assuming that accessibility is homogeneous inside a same age class.
+```{r}
+Merluccius2016_ObsSim_byage_data <-age_aggreg(data = Merluccius2016_ObsSim_data,
+                                              save_conv_path = length_age_tables_path)
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+```{r}
+plotOF_merluccius(Merluccius2016_ObsSim_byage_data,log_scale = T) 
+```
+
+Let us compute the best value of parameter
+```{r}
+Merluccius2016_best_set <- best_set(Merluccius2016_ObsSim_byage_data)
+print(Merluccius2016_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim_merluccius(Merluccius2016_best_set) 
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Merluccius2016_best_set,save_path)
+save_q_noseason_semantics(Merluccius2016_best_set,save_path)
+```
+
+
+#### 2017
+Read the results of the simulations of the LHS sampling:
+```{r}
+Merluccius2017_raw <- readRDS(paste0(res_lhs_path,"/res_rds_merluccius2017/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Merluccius2017_ObsSim_data <- raw_to_ObsSim(raw_data = Merluccius2017_raw, 
+                                            species = "Merluccius merluccius", 
+                                            year = 2017)
+```
+
+This species is structured in length instead of in age. To avoid interactions between group variables, we recompose the dataset to perform the optimisation by age, assuming that accessibility is homogeneous inside a same age class.
+```{r}
+Merluccius2017_ObsSim_byage_data <-age_aggreg(data = Merluccius2017_ObsSim_data,
+                                              save_conv_path = length_age_tables_path)
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+```{r}
+plotOF_merluccius(Merluccius2017_ObsSim_byage_data,log_scale = T) 
+```
+
+Let us compute the best value of parameter
+```{r}
+Merluccius2017_best_set <- best_set(Merluccius2017_ObsSim_byage_data)
+print(Merluccius2017_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim_merluccius(Merluccius2017_best_set) 
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Merluccius2017_best_set,save_path)
+save_q_noseason_semantics(Merluccius2017_best_set,save_path)
+```
+
+
+
+
+#### 2018
+Read the results of the simulations of the LHS sampling:
+```{r}
+Merluccius2018_raw <- readRDS(paste0(res_lhs_path,"/res_rds_merluccius2018/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Merluccius2018_ObsSim_data <- raw_to_ObsSim(raw_data = Merluccius2018_raw, 
+                                            species = "Merluccius merluccius", 
+                                            year = 2018)
+```
+
+This species is structured in length instead of in age. To avoid interactions between group variables, we recompose the dataset to perform the optimisation by age, assuming that accessibility is homogeneous inside a same age class.
+```{r}
+Merluccius2018_ObsSim_byage_data <-age_aggreg(data = Merluccius2018_ObsSim_data,
+                                              save_conv_path = length_age_tables_path)
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+```{r}
+plotOF_merluccius(Merluccius2018_ObsSim_byage_data,log_scale = T) 
+```
+
+Let us compute the best value of parameter
+```{r}
+Merluccius2018_best_set <- best_set(Merluccius2018_ObsSim_byage_data)
+print(Merluccius2018_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim_merluccius(Merluccius2018_best_set) 
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Merluccius2018_best_set,save_path)
+save_q_noseason_semantics(Merluccius2018_best_set,save_path)
+```
+
+
+#### Summary
+Here, we gather the estimations for all years, compute the mean and plot the accessibility obtained for each population group:
+```{r}
+Merluccius_best_sets <- rbind(Merluccius2015_best_set,
+                              Merluccius2016_best_set,
+                              Merluccius2017_best_set,
+                              Merluccius2018_best_set)
+Merluccius_mean_q <- Merluccius_best_sets %>% 
+  group_by(q_name,species) %>%
+  summarise(q=mean(q)) %>%
+  ungroup()
+plot_q_estim(Merluccius_best_sets,Merluccius_mean_q)
+```
+
+Save the mean accessibility matrix as .csv:
+```{r}
+save_qmean_noseason_csv(Merluccius_mean_q,save_path)
+```
+
+
+
+### *Nephrops norvegicus* {.tabset}
+#### 2015
+Read the results of the simulations of the LHS sampling:
+```{r}
+Nephrops2015_raw <- readRDS(paste0(res_lhs_path,"/res_rds_nephrops2015/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+```{r}
+Nephrops2015_ObsSim_data <- raw_to_ObsSim(raw_data = Nephrops2015_raw, 
+                                          species = "Nephrops norvegicus", 
+                                          year = 2015)
+```
+
+This species is structured in length instead of in age. To avoid interactions between group variables, we recompose the dataset to perform the optimisation by age, assuming that accessibility is homogeneous inside a same age class.
+```{r}
+Nephrops2015_ObsSim_byage_data <-age_aggreg(data = Nephrops2015_ObsSim_data,
+                                            save_conv_path = length_age_tables_path)
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+```{r,warning=FALSE}
+plotNephrops2015 <- plotOF_nephrops(Nephrops2015_ObsSim_byage_data,log_scale = T) 
+print(plotNephrops2015[[1]])
+print(plotNephrops2015[[2]])
+```
+
+Let us compute the best value of parameter
+```{r}
+Nephrops2015_best_set <- best_set(Nephrops2015_ObsSim_byage_data)
+print(Nephrops2015_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plotNephrops2015_obs_vs_sim <- plot_obs_vs_sim_nephrops(Nephrops2015_best_set) 
+print(plotNephrops2015_obs_vs_sim[[1]])
+print(plotNephrops2015_obs_vs_sim[[2]])
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Nephrops2015_best_set,save_path)
+save_q_noseason_semantics(Nephrops2015_best_set,save_path)
+```
+
+#### 2016
+Read the results of the simulations of the LHS sampling:
+```{r}
+Nephrops2016_raw <- readRDS(paste0(res_lhs_path,"/res_rds_nephrops2016/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+```{r}
+Nephrops2016_ObsSim_data <- raw_to_ObsSim(raw_data = Nephrops2016_raw, 
+                                          species = "Nephrops norvegicus", 
+                                          year = 2016)
+```
+
+This species is structured in length instead of in age. To avoid interactions between group variables, we recompose the dataset to perform the optimisation by age, assuming that accessibility is homogeneous inside a same age class.
+```{r}
+Nephrops2016_ObsSim_byage_data <-age_aggreg(data = Nephrops2016_ObsSim_data,
+                                            save_conv_path = length_age_tables_path)
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+```{r,warning=FALSE}
+plotNephrops2016 <- plotOF_nephrops(Nephrops2016_ObsSim_byage_data,log_scale = T) 
+print(plotNephrops2016[[1]])
+print(plotNephrops2016[[2]])
+```
+
+Let us compute the best value of parameter
+```{r}
+Nephrops2016_best_set <- best_set(Nephrops2016_ObsSim_byage_data)
+print(Nephrops2016_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plotNephrops2016_obs_vs_sim <- plot_obs_vs_sim_nephrops(Nephrops2016_best_set) 
+print(plotNephrops2016_obs_vs_sim[[1]])
+print(plotNephrops2016_obs_vs_sim[[2]])
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Nephrops2016_best_set,save_path)
+save_q_noseason_semantics(Nephrops2016_best_set,save_path)
+```
+
+#### 2017
+Read the results of the simulations of the LHS sampling:
+```{r}
+Nephrops2017_raw <- readRDS(paste0(res_lhs_path,"/res_rds_nephrops2017/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+```{r}
+Nephrops2017_ObsSim_data <- raw_to_ObsSim(raw_data = Nephrops2017_raw, 
+                                          species = "Nephrops norvegicus", 
+                                          year = 2017)
+```
+
+This species is structured in length instead of in age. To avoid interactions between group variables, we recompose the dataset to perform the optimisation by age, assuming that accessibility is homogeneous inside a same age class.
+```{r}
+Nephrops2017_ObsSim_byage_data <-age_aggreg(data = Nephrops2017_ObsSim_data,
+                                            save_conv_path = length_age_tables_path)
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+```{r,warning=FALSE}
+plotNephrops2017 <- plotOF_nephrops(Nephrops2017_ObsSim_byage_data,log_scale = T) 
+print(plotNephrops2017[[1]])
+print(plotNephrops2017[[2]])
+```
+
+Let us compute the best value of parameter
+```{r}
+Nephrops2017_best_set <- best_set(Nephrops2017_ObsSim_byage_data)
+print(Nephrops2017_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plotNephrops2017_obs_vs_sim <- plot_obs_vs_sim_nephrops(Nephrops2017_best_set) 
+print(plotNephrops2017_obs_vs_sim[[1]])
+print(plotNephrops2017_obs_vs_sim[[2]])
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Nephrops2017_best_set,save_path)
+save_q_noseason_semantics(Nephrops2017_best_set,save_path)
+```
+
+
+
+#### 2018
+Read the results of the simulations of the LHS sampling:
+```{r}
+Nephrops2018_raw <- readRDS(paste0(res_lhs_path,"/res_rds_nephrops2018/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+```{r}
+Nephrops2018_ObsSim_data <- raw_to_ObsSim(raw_data = Nephrops2018_raw, 
+                                          species = "Nephrops norvegicus", 
+                                          year = 2018)
+```
+
+This species is structured in length instead of in age. To avoid interactions between group variables, we recompose the dataset to perform the optimisation by age, assuming that accessibility is homogeneous inside a same age class.
+```{r}
+Nephrops2018_ObsSim_byage_data <-age_aggreg(data = Nephrops2018_ObsSim_data,
+                                            save_conv_path = length_age_tables_path)
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+```{r,warning=FALSE}
+plotNephrops2018 <- plotOF_nephrops(Nephrops2018_ObsSim_byage_data,log_scale = T) 
+print(plotNephrops2018[[1]])
+print(plotNephrops2018[[2]])
+```
+
+Let us compute the best value of parameter
+```{r}
+Nephrops2018_best_set <- best_set(Nephrops2018_ObsSim_byage_data)
+print(Nephrops2018_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plotNephrops2018_obs_vs_sim <- plot_obs_vs_sim_nephrops(Nephrops2018_best_set) 
+print(plotNephrops2018_obs_vs_sim[[1]])
+print(plotNephrops2018_obs_vs_sim[[2]])
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Nephrops2018_best_set,save_path)
+save_q_noseason_semantics(Nephrops2018_best_set,save_path)
+```
+
+
+
+#### Summary
+Here, we gather the estimations for all years, compute the mean and plot the accessibility obtained for each population group:
+```{r}
+Nephrops_best_sets <- rbind(Nephrops2015_best_set,
+                            Nephrops2016_best_set,
+                            Nephrops2017_best_set,
+                            Nephrops2018_best_set)
+Nephrops_mean_q <- Nephrops_best_sets %>% 
+  group_by(q_name,species) %>%
+  summarise(q=mean(q)) %>%
+  ungroup()
+plot_q_estim(Nephrops_best_sets,Nephrops_mean_q)
+```
+
+Save the mean accessibility matrix as .csv:
+```{r}
+save_qmean_noseason_csv(Nephrops_mean_q,save_path)
+```
+
+### *Leucoraja naevus* {.tabset}
+#### 2015
+Read the results of the simulations of the LHS sampling:
+```{r}
+Leucoraja2015_raw <- readRDS(paste0(res_lhs_path,"/res_rds_leucoraja2015/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Leucoraja2015_ObsSim_data <- raw_to_ObsSim(raw_data = Leucoraja2015_raw, 
+                                           species = "Leucoraja naevus", 
+                                           year = 2015)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Leucoraja2015_ObsSim_std_data <- Leucoraja2015_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Leucoraja2015_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Leucoraja2015_best_set <- best_set(Leucoraja2015_ObsSim_std_data)
+print(Leucoraja2015_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Leucoraja2015_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Leucoraja2015_best_set,save_path)
+save_q_noseason_semantics(Leucoraja2015_best_set,save_path)
+```
+
+#### 2016
+Read the results of the simulations of the LHS sampling:
+```{r}
+Leucoraja2016_raw <- readRDS(paste0(res_lhs_path,"/res_rds_leucoraja2016/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Leucoraja2016_ObsSim_data <- raw_to_ObsSim(raw_data = Leucoraja2016_raw, 
+                                       species = "Leucoraja naevus", 
+                                       year = 2016)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Leucoraja2016_ObsSim_std_data <- Leucoraja2016_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Leucoraja2016_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Leucoraja2016_best_set <- best_set(Leucoraja2016_ObsSim_std_data)
+print(Leucoraja2016_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Leucoraja2016_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Leucoraja2016_best_set,save_path)
+save_q_noseason_semantics(Leucoraja2016_best_set,save_path)
+```
+
+#### 2017
+Read the results of the simulations of the LHS sampling:
+```{r}
+Leucoraja2017_raw <- readRDS(paste0(res_lhs_path,"/res_rds_leucoraja2017/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Leucoraja2017_ObsSim_data <- raw_to_ObsSim(raw_data = Leucoraja2017_raw, 
+                                       species = "Leucoraja naevus", 
+                                       year = 2017)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Leucoraja2017_ObsSim_std_data <- Leucoraja2017_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Leucoraja2017_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Leucoraja2017_best_set <- best_set(Leucoraja2017_ObsSim_std_data)
+print(Leucoraja2017_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Leucoraja2017_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Leucoraja2017_best_set,save_path)
+save_q_noseason_semantics(Leucoraja2017_best_set,save_path)
+```
+
+
+#### 2018
+Read the results of the simulations of the LHS sampling:
+```{r}
+Leucoraja2018_raw <- readRDS(paste0(res_lhs_path,"/res_rds_leucoraja2018/raw.rds"))
+```
+
+Compute absolute error and format the dataset:
+
+```{r}
+
+Leucoraja2018_ObsSim_data <- raw_to_ObsSim(raw_data = Leucoraja2018_raw, 
+                                           species = "Leucoraja naevus", 
+                                           year = 2018)
+```
+
+In a first step, let us restrict our analysis to the standardised error:
+```{r}
+Leucoraja2018_ObsSim_std_data <- Leucoraja2018_ObsSim_data %>% filter(err_type=="err_std")
+```
+
+Here we plot the scatter plot of the objective function for each parameter, for all the simulations of the LHS:
+
+```{r}
+plotOF(Leucoraja2018_ObsSim_std_data, log_scale = T)
+```
+
+Let us compute the best value of parameter
+```{r}
+Leucoraja2018_best_set <- best_set(Leucoraja2018_ObsSim_std_data)
+print(Leucoraja2018_best_set)
+```
+
+Here we plot observed vs. simulated values:
+```{r}
+plot_obs_vs_sim(Leucoraja2018_best_set)
+```
+
+Save the accessibility matrix as .csv:
+```{r}
+save_q_noseason_csv(Leucoraja2018_best_set,save_path)
+save_q_noseason_semantics(Leucoraja2018_best_set,save_path)
+```
+
+#### Summary
+Here, we gather the estimations for all years, compute the mean and plot the accessibility obtained for each population group:
+```{r}
+Leucoraja_best_sets <- rbind(Leucoraja2015_best_set,
+                             Leucoraja2016_best_set,
+                             Leucoraja2017_best_set,
+                             Leucoraja2018_best_set)
+Leucoraja_mean_q <- Leucoraja_best_sets %>% 
+  group_by(q_name,species) %>%
+  summarise(q=mean(q)) %>%
+  ungroup()
+plot_q_estim(Leucoraja_best_sets,Leucoraja_mean_q)
+```
+
+Save the mean accessibility matrix as .csv:
+```{r}
+save_qmean_noseason_csv(Leucoraja_mean_q,save_path)
+```
