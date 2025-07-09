@@ -1,0 +1,1 @@
+double sel = Math.pow( group.getLength() * 10 , 10.9291193393278 )/( Math.pow( group.getLength() * 10 , 10.9291193393278 ) + Math.pow( 260.647804467875 , 10.9291193393278 ) ); return 5.69161981678546 * sel; /**   metier: O_4 species: Merluccius merluccius */

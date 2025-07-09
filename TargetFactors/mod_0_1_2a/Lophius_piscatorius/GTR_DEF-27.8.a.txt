@@ -1,0 +1,1 @@
+double sel = Math.pow( group.getLength() * 10 , 7.1949161466608 )/( Math.pow( group.getLength() * 10 , 7.1949161466608 ) + Math.pow( 397.32548815272 , 7.1949161466608 ) ); return 1.42012013483608 * sel; /**   metier: GTR_DEF species: Lophius piscatorius */

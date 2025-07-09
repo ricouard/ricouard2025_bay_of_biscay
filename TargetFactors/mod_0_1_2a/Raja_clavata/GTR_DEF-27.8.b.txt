@@ -1,0 +1,1 @@
+return 0.816902712737092 ; /**   metier: GTR_DEF species: Raja clavata */

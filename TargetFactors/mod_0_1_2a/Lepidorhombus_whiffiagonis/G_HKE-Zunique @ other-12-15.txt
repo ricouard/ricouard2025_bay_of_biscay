@@ -1,0 +1,1 @@
+double sel = Math.exp(  - Math.pow( ( group.getLength() * 10 ) - 324.095061291858 , 2 ) / ( 2 * Math.pow( 35.3222074509654 , 2 ) ) ); return 1 * sel; /** metier: G_HKE species: Lepidorhombus whiffiagonis */

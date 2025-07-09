@@ -1,0 +1,1 @@
+return 4.73307220930128 ; /**   metier: L_low_activity_3 species: Merluccius merluccius */

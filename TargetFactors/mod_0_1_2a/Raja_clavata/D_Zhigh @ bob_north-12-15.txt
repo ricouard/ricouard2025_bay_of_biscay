@@ -1,0 +1,1 @@
+return 0.144212630829323 ; /**   metier: D species: Raja clavata */

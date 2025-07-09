@@ -1,0 +1,1 @@
+return 0.795300619535369 ; /**   metier: GNS_DEF species: Leucoraja naevus */

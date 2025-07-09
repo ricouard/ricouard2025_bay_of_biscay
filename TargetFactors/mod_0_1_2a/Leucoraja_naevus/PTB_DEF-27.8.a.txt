@@ -1,0 +1,1 @@
+return 0.769093987503011 ; /**   metier: PTB_DEF species: Leucoraja naevus */

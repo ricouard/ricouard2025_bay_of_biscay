@@ -1,0 +1,1 @@
+return 0.80459252533071 ; /**   metier: GTR_DEF_>=100_0 species: Lepidorhombus whiffiagonis */

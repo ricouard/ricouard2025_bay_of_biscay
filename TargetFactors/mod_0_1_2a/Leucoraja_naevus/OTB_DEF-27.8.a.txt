@@ -1,0 +1,1 @@
+return 0.731766042341062 ; /**   metier: OTB_DEF species: Leucoraja naevus */

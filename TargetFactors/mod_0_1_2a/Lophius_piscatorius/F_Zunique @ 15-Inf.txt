@@ -1,0 +1,1 @@
+return 0.317493903255234 ; /**   metier: F species: Lophius piscatorius */

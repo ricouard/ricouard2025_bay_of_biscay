@@ -1,0 +1,1 @@
+double sel = Math.pow( group.getLength() * 10 , 9.94712134019809 )/( Math.pow( group.getLength() * 10 , 9.94712134019809 ) + Math.pow( 275.831537782306 , 9.94712134019809 ) ); return 1 * sel; /**   metier: O_metier_OTH species: Lepidorhombus whiffiagonis */

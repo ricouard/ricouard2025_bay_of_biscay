@@ -1,0 +1,1 @@
+return 0.692147076421529 ; /**   metier: GNS_DEF species: Raja clavata */

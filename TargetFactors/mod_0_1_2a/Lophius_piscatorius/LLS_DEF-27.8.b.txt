@@ -1,0 +1,1 @@
+return 0.241575928325764 ; /**   metier: LLS_DEF species: Lophius piscatorius */

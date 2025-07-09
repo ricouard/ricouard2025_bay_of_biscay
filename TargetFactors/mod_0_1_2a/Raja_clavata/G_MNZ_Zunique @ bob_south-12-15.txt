@@ -1,0 +1,1 @@
+return 0.654790685778291 ; /**   metier: G_MNZ species: Raja clavata */

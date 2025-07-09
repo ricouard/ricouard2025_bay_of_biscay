@@ -1,0 +1,1 @@
+return 4.43722350934301 ; /**   metier: MIS_MIS species: Lophius piscatorius */

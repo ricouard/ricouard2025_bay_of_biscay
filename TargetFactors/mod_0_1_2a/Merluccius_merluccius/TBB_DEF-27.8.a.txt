@@ -1,0 +1,1 @@
+return 0.053420115030163 ; /**   metier: TBB_DEF species: Merluccius merluccius */

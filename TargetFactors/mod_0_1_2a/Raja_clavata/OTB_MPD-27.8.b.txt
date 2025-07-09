@@ -1,0 +1,1 @@
+return 0.407207184049177 ; /**   metier: OTB_MPD species: Raja clavata */

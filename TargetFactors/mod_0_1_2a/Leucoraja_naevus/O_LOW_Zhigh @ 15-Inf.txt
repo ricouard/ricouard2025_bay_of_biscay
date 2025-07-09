@@ -1,0 +1,1 @@
+return 0.756485036526205 ; /**   metier: O_LOW species: Leucoraja naevus */

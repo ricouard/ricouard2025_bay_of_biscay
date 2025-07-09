@@ -1,0 +1,1 @@
+return 0.288834598491342 ; /**   metier: LHM_SPF species: Raja clavata */

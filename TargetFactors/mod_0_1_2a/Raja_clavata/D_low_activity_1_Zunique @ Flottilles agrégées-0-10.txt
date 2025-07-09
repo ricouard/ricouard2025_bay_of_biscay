@@ -1,0 +1,1 @@
+return 1.03181644978247 ; /**   metier: D_low_activity_1 species: Raja clavata */

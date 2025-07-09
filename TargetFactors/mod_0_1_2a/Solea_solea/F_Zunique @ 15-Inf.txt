@@ -1,0 +1,1 @@
+return 0.173783303608153 ; /**   metier: F species: Solea solea */

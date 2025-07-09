@@ -1,0 +1,1 @@
+return 0.325678847428001 ; /**   metier: LLS_DEF species: Leucoraja naevus */

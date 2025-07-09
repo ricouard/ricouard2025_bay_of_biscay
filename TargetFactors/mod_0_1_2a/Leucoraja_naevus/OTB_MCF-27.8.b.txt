@@ -1,0 +1,1 @@
+return 0.520970238403775 ; /**   metier: OTB_MCF species: Leucoraja naevus */

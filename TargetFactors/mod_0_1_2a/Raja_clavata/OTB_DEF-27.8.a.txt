@@ -1,0 +1,1 @@
+return 0.52933750996685 ; /**   metier: OTB_DEF species: Raja clavata */

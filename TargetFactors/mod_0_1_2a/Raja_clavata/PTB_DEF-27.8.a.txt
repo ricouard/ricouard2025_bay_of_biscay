@@ -1,0 +1,1 @@
+return 0.85304397403581 ; /**   metier: PTB_DEF species: Raja clavata */

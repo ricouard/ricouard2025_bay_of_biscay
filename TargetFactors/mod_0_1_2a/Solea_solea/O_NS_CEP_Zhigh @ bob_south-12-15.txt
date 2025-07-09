@@ -1,0 +1,1 @@
+double sel = Math.pow( group.getLength() * 10 , 25.337667186158 )/( Math.pow( group.getLength() * 10 , 25.337667186158 ) + Math.pow( 261.831374287468 , 25.337667186158 ) ); return 1.20710477927353 * sel; /**   metier: O_NS_CEP species: Solea solea */

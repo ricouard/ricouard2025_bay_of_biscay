@@ -1,0 +1,1 @@
+return 0.587410693111629 ; /**   metier: OTB_MPD species: Leucoraja naevus */

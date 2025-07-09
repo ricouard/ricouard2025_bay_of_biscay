@@ -1,0 +1,1 @@
+return 0.350295343774213 ; /**   metier: TBB_DEF species: Lophius piscatorius */

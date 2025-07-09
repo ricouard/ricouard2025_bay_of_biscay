@@ -1,0 +1,1 @@
+return 0.150651791535934 ; /**   metier: F species: Merluccius merluccius */

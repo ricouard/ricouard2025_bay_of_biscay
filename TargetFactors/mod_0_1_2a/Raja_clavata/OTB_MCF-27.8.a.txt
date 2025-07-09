@@ -1,0 +1,1 @@
+return 0.431976295392278 ; /**   metier: OTB_MCF species: Raja clavata */

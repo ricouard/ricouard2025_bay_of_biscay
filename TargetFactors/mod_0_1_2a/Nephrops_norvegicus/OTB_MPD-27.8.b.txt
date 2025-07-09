@@ -1,0 +1,1 @@
+double sel = Math.pow( group.getLength() * 1 , 19.3725838020654 )/( Math.pow( group.getLength() * 1 , 19.3725838020654 ) + Math.pow( 22.0825095821145 , 19.3725838020654 ) ); return 0 * sel; /**   metier: OTB_MPD species: Nephrops norvegicus */

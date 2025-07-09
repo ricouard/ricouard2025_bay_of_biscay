@@ -1,0 +1,1 @@
+return 2.94750030258884 ; /**   metier: MIS_MIS species: Raja clavata */

@@ -1,0 +1,1 @@
+return 0.669390317505253 ; /**   metier: G_LOW species: Raja clavata */

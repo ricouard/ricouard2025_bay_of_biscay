@@ -1,0 +1,1 @@
+return 6.90498549791221 ; /**   metier: L_3 species: Merluccius merluccius */
