@@ -136,7 +136,7 @@ exported_q_path <- paste0(here(),"/accessibility_values/q2_season_step2a")
 The first time, import data by transforming the raw simulated data into .rds. Once imported, no need to do it again, work only with .rds.
 
 ```{r,message=FALSE,warning=FALSE}
-import_simulations <- F
+import_simulations <- T
 if(import_simulations){
   
     for(i in seq(length(Species))){
