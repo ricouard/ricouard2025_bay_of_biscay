@@ -4752,7 +4752,7 @@ plot_mean_access <- function(species,access_path){
               brewer.pal(5, "Blues")[4],
               brewer.pal(5, "Blues")[5])
   
-  file <- paste0(access_path,"/csv/",species,"/MeanAcc_",species,".csv")
+  file <- paste0(access_path,"/",species,"/MeanAcc_",species,".csv")
   
   if(species == "Nephrops_norvegicus"){
     
