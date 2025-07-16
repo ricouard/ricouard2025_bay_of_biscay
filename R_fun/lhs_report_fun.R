@@ -402,91 +402,9 @@ save_q_noseason_csv <- function(best_set_data,save_path){
            july,august,september,october,november,december)
   
     write.table(Q,
-              file = paste0(save_path,"/csv/",species,"/acc_",thisYear,"_",species,".csv"),
+              file = paste0(save_path,"/",species,"/acc_",thisYear,"_",species,".csv"),
               sep=';',
               row.names=F)
-  
-}
-
-save_q_noseason_semantics <- function(best_set_data,save_path){
-
-  # prepare data
-  year <- best_set_data %>% select(year) %>% distinct() %>% as.numeric()
-  
-  best_set_data <- best_set_data %>% 
-    arrange(q_name) %>% 
-    mutate(species = str_replace(species," ","_")) %>%
-    mutate(PopulationGroup = paste0(species,"+",(row_number()-1)),
-           group_coord = row_number()-1)
-  
-
-  Spe <- best_set_data %>%
-    select(species) %>%
-    distinct() %>%
-    str_replace(" ","_")
-
-  if(Spe=="Nephrops_norvegicus"){
-    best_set_data <- best_set_data %>%
-      select(year,q_name,q) %>%
-      rbind(data.frame(year = year, q_name=c("q33","q34"),q=c(0,0))) %>%
-      arrange((q_name)) %>%
-      mutate(PopulationGroup = paste0(Spe,"+",(row_number()-1)),
-             group_coord = row_number()-1)
-
-    seasons <- data.frame(m_begin = c(0,1,3,4,6,8,9,10),
-                          m_end = c(0,2,3,5,7,8,9,11))
-
-  }else if(Spe == "Leucoraja_naevus"){
-
-    seasons <- data.frame(m_begin = c(0,1),
-                          m_end = c(0,11))
-
-  }else{
-
-    seasons <- data.frame(m_begin = 0:11,
-                          m_end = 0:11)
-
-  }
-  
-  seasons <- seasons %>% mutate(PopulationSeasonInfo = paste0(Spe,"+",m_begin,"+",m_end),
-                                season_coord = row_number()-1)
- 
-  file_name <- paste0(save_path,"/semantics/",Spe,"/acc_",year,"_",Spe,".txt")
-
-  # write matrix
-  # line 1
-  write_lines(paste0("[",nrow(best_set_data),",",nrow(seasons),"]"),
-              file= file_name )
-  
-  #line 2
-  Line2 <- paste0("PopulationGroup:",best_set_data$PopulationGroup[1])
-  if(nrow(best_set_data)>1){
-    for(i in 2:(nrow(best_set_data))){
-      Line2 <- paste(Line2,best_set_data$PopulationGroup[i],sep=",")
-    }
-  }
-  write_lines(Line2,
-              append = T,
-              file = file_name)
-  
-  #line 3
-  Line3 <- paste0("PopulationSeasonInfo:",seasons$PopulationSeasonInfo[1])
-  for(i in 2:(nrow(seasons))){
-    Line3 <- paste(Line3,seasons$PopulationSeasonInfo[i],sep=",")
-  }
-  write_lines(Line3,
-              append = T,
-              file = file_name)
-  
-  # subsequent lines
-  DatToWrite <- merge(best_set_data,seasons) %>% 
-    select(group_coord,season_coord,q) 
-  write.table(DatToWrite,
-              sep=";",
-              append=T,
-              row.names=F,
-              col.names = F,
-              file=file_name)
   
 }
 
@@ -513,7 +431,7 @@ save_qmean_noseason_csv <- function(q_data,save_path){
            july,august,september,october,november,december)
   
   write.table(Q,
-              file = paste0(save_path,"/csv/",species,"/MeanAcc_",species,".csv"),
+              file = paste0(save_path,"/",species,"/MeanAcc_",species,".csv"),
               sep=';',
               row.names=F)
   
