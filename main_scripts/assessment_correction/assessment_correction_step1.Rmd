@@ -1,0 +1,2413 @@
+---
+title: "ISIS-Fish MACCO - Model calibration step 1"
+author: "Antoine Ricouard"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r,echo=F}
+print(paste("start: ",Sys.time()))
+```
+
+# Introduction {.tabset}
+
+This document contains the code along with the results of the skill assessment of step 1 model. Simulations are run one year by one year, starting in 2015, 2016, 2017 and 2018, with forced recruitment. This script is also part of the calibration process given that it computes coefficients to perform metier correction as well as seasonalisation of accessibility.
+
+This document is divided into three sections (each one in a different tab). The reader mainly interested by the results will find them in the second section "Analysis by species".
+
+In "Analysis by species" section, he will find a tab by species and for each species, a tab by variable. These metrics are :
+
+-   "Total catch"
+
+-   "Catch by age group by year"
+
+-   "Total landings by season"
+
+-   "Landings by year by country"
+
+-   "Landings by metier by year"
+
+-   "Landings by metier by season"
+
+-   "Total abundance"
+
+-   "Abundance by age group"
+
+-   "SSB"
+
+-   "Fishing mortality by age group"
+
+The results consist in comparison between observations and model simulations for these variables.
+
+The first and third section are for the advanced user wanting to reproduce the analysis or to check the whole process. This user will need the source code (.Rmd file), the companion script **model_validation_fun.R** as well as observed and simulated data in the right format.
+
+In the first section, "Preparation", he will find all the settings and preliminary steps required to perform the analysis, including loading of the companion script and packages, path specifications and control of data importation. In the fourth section, he will find commands for exportation of model correction files to prepare the next validation step.
+
+## Preparation
+
+Before starting, we load necessary packages and the file containing all the functions we need:
+
+```{r setup, message=F}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(purrr, include.only = c("map_dfr"))
+library(here)
+library(scales)
+library(RColorBrewer)
+library(stringr)
+library(readr)
+
+library(parallel)
+library(doParallel, include.only = c("registerDoParallel"))
+library(foreach)
+
+import::here(.from = magrittr, "%>%", extract, extract2)
+import::here(.from = purrr, imap_chr, imap_dfc)
+
+
+source(paste0(here(),"/R_fun/model_validation_fun.R"))
+
+```
+
+We have to specify a number of paths. First, the path of the observation data storage:
+
+```{r}
+obs_data_path <- paste0(here(),"/reference_data")
+```
+
+Then, the path to the simulation repositories (with simulation raw data):
+
+```{r}
+sim_2015_path <- paste0(here(),"/Sim_data/raw/step1_TF0q1/sim_calib_mod1_2015_2025-07-08-22-40")
+sim_2016_path <- paste0(here(),"/Sim_data/raw/step1_TF0q1/sim_calib_mod1_2016_2025-07-08-22-46")
+sim_2017_path <- paste0(here(),"/Sim_data/raw/step1_TF0q1/sim_calib_mod1_2017_2025-07-08-23-09")
+sim_2018_path <- paste0(here(),"/Sim_data/raw/step1_TF0q1/sim_calib_mod1_2018_2025-07-08-23-03")
+```
+
+The path to tidy simulation data:
+
+```{r}
+sim_tidy_path <- paste0(here(),"/Sim_data/tidy/step1_TF0q1/byyear_2015_2018")
+```
+
+
+For *Nephrops norvegicus* and *Merluccius merluccius*, we also need tables to convert groupisis in age because of the hypothesis of homogeneous accessibility by age :
+
+```{r}
+AgeLength_tables_path <- paste0(here(),"/input_data/age_length_corresp")
+```
+
+We also specify the time period on which the model is calibrated:
+```{r}
+years <- c(2015,2016,2017,2018)
+```
+
+The list of species:
+
+```{r}
+Species <- c("Solea_solea",
+             "Lophius_piscatorius",
+             "Lepidorhombus_whiffiagonis",
+             "Raja_clavata",
+             "Leucoraja_naevus",
+             "Nephrops_norvegicus",
+             "Merluccius_merluccius")
+```
+
+Wether or not exporting target factor corrections (analysis by metier), and in that case, the path to previous target factor directory as well as the path to exported target factor files:
+```{r}
+export_corrections_TF <- T
+previousTF_path <- paste0(here(),"/TargetFactors/mod_0_1_2a")
+exportedTF_path <- paste0(here(),"/TargetFactors/mod_2b")
+```
+
+Wether or not exporting seasonnal accessibility corrections (analysis by season), and in that case, the path to previous accessibility directory as well as the path to exported accessibility files:
+
+```{r}
+export_corrections_q <- T
+previous_q_path <- paste0(here(),"/accessibility_values/q1_LHS_outputs")
+exported_q_path <- paste0(here(),"/accessibility_values/q2_season_step2a")
+```
+
+The first time, import data by transforming the raw simulated data into .rds. Once imported, no need to do it again, work only with .rds.
+
+```{r,message=FALSE,warning=FALSE}
+import_simulations <- F
+if(import_simulations){
+  
+    for(i in seq(length(Species))){
+      
+      import_simu_byyear2(simu = sim_2015_path,
+                          tidy = sim_tidy_path,
+                          species = Species[i],
+                          year=2015)
+      import_simu_byyear2(simu = sim_2016_path,
+                          tidy = sim_tidy_path,
+                          species = Species[i],
+                          year=2016)
+      import_simu_byyear2(simu = sim_2017_path,
+                          tidy = sim_tidy_path,
+                          species = Species[i],
+                          year=2017)
+      import_simu_byyear2(simu = sim_2018_path,
+                          tidy = sim_tidy_path,
+                          species = Species[i],
+                          year=2018)
+      
+      
+      import_simu_byseason2(simu = sim_2015_path,
+                            tidy = sim_tidy_path,
+                            species = Species[i],
+                            year=2015)
+      import_simu_byseason2(simu = sim_2016_path,
+                            tidy = sim_tidy_path,
+                            species = Species[i],
+                            year=2016)
+      import_simu_byseason2(simu = sim_2017_path,
+                            tidy = sim_tidy_path,
+                            species = Species[i],
+                            year=2017)
+      import_simu_byseason2(simu = sim_2018_path,
+                            tidy = sim_tidy_path,
+                            species = Species[i],
+                            year=2018)
+      
+      
+      import_simu_abundance(simu = sim_2015_path,
+                            tidy = sim_tidy_path,
+                            species = Species[i],
+                            years=2015)
+      import_simu_abundance(simu = sim_2016_path,
+                            tidy = sim_tidy_path,
+                            species = Species[i],
+                            years=2016)
+      import_simu_abundance(simu = sim_2017_path,
+                            tidy = sim_tidy_path,
+                            species = Species[i],
+                            years=2017)
+      import_simu_abundance(simu = sim_2018_path,
+                            tidy = sim_tidy_path,
+                            species = Species[i],
+                            years=2018)
+      
+      
+      import_simu_ssb(simu = sim_2015_path,
+                      tidy = sim_tidy_path,
+                      species = Species[i],
+                      years=2015)
+      import_simu_ssb(simu = sim_2016_path,
+                      tidy = sim_tidy_path,
+                      species = Species[i],
+                      years=2016)
+      import_simu_ssb(simu = sim_2017_path,
+                      tidy = sim_tidy_path,
+                      species = Species[i],
+                      years=2017)
+      import_simu_ssb(simu = sim_2018_path,
+                      tidy = sim_tidy_path,
+                      species = Species[i],
+                      years=2018)
+      
+      
+      import_simu_Fmor(simu = sim_2015_path,
+                       tidy = sim_tidy_path,
+                       species = Species[i],
+                       years=2015)
+      import_simu_Fmor(simu = sim_2016_path,
+                       tidy = sim_tidy_path,
+                       species = Species[i],
+                       years=2016)
+      import_simu_Fmor(simu = sim_2017_path,
+                       tidy = sim_tidy_path,
+                       species = Species[i],
+                       years=2017)
+      import_simu_Fmor(simu = sim_2018_path,
+                       tidy = sim_tidy_path,
+                       species = Species[i],
+                       years=2018)
+
+    }
+  
+  import_simu_Nbyyear(simu = sim_2015_path,
+                      tidy = sim_tidy_path,
+                      species = "Nephrops_norvegicus",
+                      year=2015)
+  
+  import_simu_Nbyyear(simu = sim_2016_path,
+                      tidy = sim_tidy_path,
+                      species = "Nephrops_norvegicus",
+                      year=2016)
+  
+  import_simu_Nbyyear(simu = sim_2017_path,
+                      tidy = sim_tidy_path,
+                      species = "Nephrops_norvegicus",
+                      year=2017)
+  
+  import_simu_Nbyyear(simu = sim_2018_path,
+                      tidy = sim_tidy_path,
+                      species = "Nephrops_norvegicus",
+                      year=2018)
+  
+}
+
+```
+
+## Analysis by species {.tabset}
+
+### *Solea solea* {.tabset}
+
+```{r}
+species <- "Solea solea"
+spp_code <- str_replace(species," ","_")
+```
+
+Reading simulated dataset:
+
+```{r}
+Solea_sim_byyear <- read_tidysim_byyear(species = spp_code, 
+                                        years = years,
+                                        path = sim_tidy_path)
+
+Solea_sim_byseason <- read_tidysim_byseason(species = spp_code, 
+                                            years = years,
+                                            path = sim_tidy_path)
+
+Solea_sim_N <- read_tidysim_N(species = spp_code, 
+                              years = years,
+                              path = sim_tidy_path)
+
+Solea_sim_F <- read_tidysim_F(species = spp_code, 
+                              years = years,
+                              path = sim_tidy_path)
+
+Solea_sim_SSB <- read_tidysim_SSB(species = spp_code, 
+                                  years = years,
+                                  path = sim_tidy_path)
+
+
+```
+
+#### Total catch
+
+```{r}
+metrics <- "total catch"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Solea_data_catch_total_byyear <- prep_total_catch_byyear(sim_data = Solea_sim_byyear,
+                                                         species = spp_code,
+                                                         years = years,
+                                                         obs_data_path = obs_data_path,
+                                                         export = F,
+                                                         export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_catch_total_byyear(Solea_data_catch_total_byyear,species)
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Solea_data_catch_total_byyear,species,metrics)
+```
+
+#### Catch by group ISIS by year
+
+```{r}
+metrics <- "catch by group"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Solea_data_catch_groupisis_byyear <- prep_catch_groupisis_byyear(sim_data = Solea_sim_byyear,
+                                                                 species = spp_code,
+                                                                 years = years,
+                                                                 obs_data_path = obs_data_path,
+                                                                 export = F,
+                                                                 export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+Solea_plot_catch_bygroup_byyear <- plot_catch_bygroup_byyear(Solea_data_catch_groupisis_byyear,species)
+for(i in seq(length(Solea_plot_catch_bygroup_byyear))){ 
+  print(Solea_plot_catch_bygroup_byyear[[i]])
+}
+
+plot_diagonal(Solea_data_catch_groupisis_byyear,species,metrics)
+```
+
+#### Total landings by season
+
+```{r}
+metrics <- "landings by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Solea_data_land_byseason  <- prep_land_byseason(sim_data = Solea_sim_byseason,
+                                                species = spp_code,
+                                                years = years,
+                                                obs_data_path = obs_data_path,
+                                                export = F,
+                                                export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_byseason(Solea_data_land_byseason,species)
+plot_diagonal(Solea_data_land_byseason,species,metrics)
+```
+
+In order to improve model capacity by correcting seasonal accessibility, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file.
+
+```{r}
+Solea_ratio_land_byseason <- ratio_byseason(data = Solea_data_land_byseason,species)
+```
+
+#### Landings by year by country
+
+```{r}
+metrics <- "landings by country"
+```
+
+Here, we are interested in the proportion of each country in the landings. Absolute number can differ as observation datset are different from calibration datasets.
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Solea_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Solea_sim_byyear,
+                                                               species = spp_code,
+                                                               years = years,
+                                                               obs_data_path = obs_data_path,
+                                                               export = F,
+                                                               export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_bycountry_byyear(Solea_data_land_bycountry_byyear,species)
+plot_diagonal(Solea_data_land_bycountry_byyear,species,metrics)
+```
+
+#### Landings by metier by year
+
+```{r}
+metrics <- "landings by metier"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Solea_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Solea_sim_byyear,
+                                                             species = spp_code,
+                                                             years = years,
+                                                             obs_data_path = obs_data_path,
+                                                             export = F,
+                                                             export_path = comp_path)
+```
+
+View the respective importance of each metier:
+
+```{r}
+thresh <- 0.9
+Solea_metier_frequency <- metier_frequency(data = Solea_data_land_bymetier_byyear)
+plot_metier_frequency(Solea_metier_frequency,thresh,species)
+```
+
+Which ones are important ? Those whose cumulative frequency is under the threshold.
+
+```{r}
+Solea_main_metiers <- main_metiers(freq_data = Solea_metier_frequency,thresh)
+```
+
+Plotting:
+
+```{r}
+Solea_plot_land_bymetier_byyear <- plot_land_bymetier_byyear(data = Solea_data_land_bymetier_byyear,
+                                                             main_metier = Solea_main_metiers,
+                                                             species = species)
+for(i in seq(length(Solea_plot_land_bymetier_byyear))){print(Solea_plot_land_bymetier_byyear[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Solea_data_land_bymetier_byyear,species,metrics)
+```
+
+In order to improve model capacity by correcting metier target factors, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file :
+
+```{r}
+Solea_ratio_land_bymetier_byyear <- ratio_bymetier(data = Solea_data_land_bymetier_byyear,species)
+```
+
+#### Landings by metier by season
+
+```{r}
+metrics <- "landings by metier by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Solea_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = Solea_sim_byseason,
+                                                                  species = spp_code,
+                                                                  years = years,
+                                                                  obs_data_path = obs_data_path,
+                                                                  export = F,
+                                                                  export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+Solea_plot_land_bymetier_byseason <- plot_land_bymetier_byseason(data = Solea_data_land_bymetier_byseason,
+                                                                 main_metier = Solea_main_metiers,
+                                                                 species = species)
+for(i in seq(length(Solea_plot_land_bymetier_byseason))){print(Solea_plot_land_bymetier_byseason[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Solea_data_land_bymetier_byseason,species,metrics)
+```
+
+#### Total abundance
+
+```{r}
+metrics <- "total abundance"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Solea_data_N_total <- prep_total_N(sim_data = Solea_sim_N,
+                                   species = spp_code,
+                                   years = years,
+                                   obs_data_path = obs_data_path,
+                                   export = F,
+                                   export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+plot_N_total(Solea_data_N_total,species)
+plot_diagonal(Solea_data_N_total,species,metrics)
+```
+
+#### Abundance by age group
+
+```{r}
+metrics <- "abundance by group"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE,warning=FALSE}
+Solea_data_N_agegroup <- prep_N_agegroup(sim_data = Solea_sim_N,
+                                         species = spp_code,
+                                         years = years,
+                                         obs_data_path = obs_data_path,
+                                         export = F,
+                                         export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+Solea_plot_N_bygroup_byyear <- plot_N_agegroup(Solea_data_N_agegroup,species)
+for(i in seq(length(Solea_plot_N_bygroup_byyear))){ 
+  print(Solea_plot_N_bygroup_byyear[[i]])
+}
+
+plot_diagonal(Solea_data_N_agegroup,species,metrics)
+```
+
+#### SSB
+
+```{r}
+metrics <- "SSB"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Solea_data_ssb <- prep_SSB(sim_data = Solea_sim_SSB,
+                           species = spp_code,
+                           years = years,
+                           obs_data_path = obs_data_path,
+                           export = F,
+                           export_path = comp_path)  
+```
+
+Plotting:
+
+```{r}
+plot_SSB(Solea_data_ssb,species)
+plot_diagonal(Solea_data_ssb,species,metrics)
+```
+
+Plotting (lines):
+
+```{r}
+plot_SSB_line(Solea_data_ssb,species)
+```
+
+#### Fishing mortality by age group
+
+```{r}
+metrics <- "F by group"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Solea_data_F_agegroup <- prep_F_agegroup(sim_data = Solea_sim_F,
+                                         species = spp_code,
+                                         years = years,
+                                         obs_data_path = obs_data_path,
+                                         export = F,
+                                         export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+Solea_plot_F_bygroup_byyear <- plot_F_agegroup(Solea_data_F_agegroup,species)
+for(i in seq(length(Solea_plot_F_bygroup_byyear))){ 
+  print(Solea_plot_F_bygroup_byyear[[i]])
+}
+
+plot_diagonal(Solea_data_F_agegroup,species,metrics)
+```
+
+### *Lepidorhombus whiffiagonis* {.tabset}
+
+```{r}
+species <- "Lepidorhombus whiffiagonis"
+spp_code <- str_replace(species," ","_")
+```
+
+Reading simulated dataset:
+
+```{r}
+LepiWhi_sim_byyear <- read_tidysim_byyear(species = spp_code, 
+                                          years = years,
+                                          path = sim_tidy_path)
+
+LepiWhi_sim_byseason <- read_tidysim_byseason(species = spp_code, 
+                                              years = years,
+                                              path = sim_tidy_path)
+
+LepiWhi_sim_N <- read_tidysim_N(species = spp_code, 
+                              years = years,
+                              path = sim_tidy_path)
+
+LepiWhi_sim_F <- read_tidysim_F(species = spp_code, 
+                              years = years,
+                              path = sim_tidy_path)
+
+LepiWhi_sim_SSB <- read_tidysim_SSB(species = spp_code, 
+                                  years = years,
+                                  path = sim_tidy_path)
+
+```
+
+#### Total catch
+
+```{r}
+metrics <- "total catch"
+```
+
+Preparation of data for plotting:
+
+```{r}
+LepiWhi_data_catch_total_byyear <- prep_total_catch_byyear(sim_data = LepiWhi_sim_byyear,
+                                                           species = spp_code,
+                                                           years = years,
+                                                           obs_data_path = obs_data_path,
+                                                           export = F,
+                                                           export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_catch_total_byyear(LepiWhi_data_catch_total_byyear,species)
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(LepiWhi_data_catch_total_byyear,species,metrics)
+```
+
+#### Catch by group ISIS by year
+
+```{r}
+metrics <- "catch by group"
+```
+
+Preparation of data for plotting:
+
+```{r}
+LepiWhi_data_catch_groupisis_byyear <- prep_catch_groupisis_byyear(sim_data = LepiWhi_sim_byyear,
+                                                                   species = spp_code,
+                                                                   years = years,
+                                                                   obs_data_path = obs_data_path,
+                                                                   export = F,
+                                                                   export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+LepiWhi_plot_catch_bygroup_byyear <- plot_catch_bygroup_byyear(LepiWhi_data_catch_groupisis_byyear,species)
+for(i in seq(length(LepiWhi_plot_catch_bygroup_byyear))){ 
+  print(LepiWhi_plot_catch_bygroup_byyear[[i]])
+}
+
+plot_diagonal(LepiWhi_data_catch_groupisis_byyear,species,metrics)
+```
+
+#### Total landings by season
+
+```{r}
+metrics <- "landings by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+LepiWhi_data_land_byseason  <- prep_land_byseason(sim_data = LepiWhi_sim_byseason,
+                                                  species = spp_code,
+                                                  years = years,
+                                                  obs_data_path = obs_data_path,
+                                                  export = F,
+                                                  export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_byseason(LepiWhi_data_land_byseason,species)
+plot_diagonal(LepiWhi_data_land_byseason,species,metrics)
+```
+
+In order to improve model capacity by correcting seasonnal accessibility, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file.
+
+```{r}
+LepiWhi_ratio_land_byseason <- ratio_byseason(data = LepiWhi_data_land_byseason,species)
+```
+
+#### Landings by year by country
+
+```{r}
+metrics <- "landings by country"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+LepiWhi_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = LepiWhi_sim_byyear,
+                                                               species = spp_code,
+                                                               years = years,
+                                                               obs_data_path = obs_data_path,
+                                                               export = F,
+                                                               export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_bycountry_byyear(LepiWhi_data_land_bycountry_byyear,species)
+plot_diagonal(LepiWhi_data_land_bycountry_byyear,species,metrics)
+```
+
+#### Landings by metier by year
+
+```{r}
+metrics <- "landings by metier"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+LepiWhi_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = LepiWhi_sim_byyear,
+                                                               species = spp_code,
+                                                               years = years,
+                                                               obs_data_path = obs_data_path,
+                                                               export = F,
+                                                               export_path = comp_path)
+```
+
+View the respective importance of each metier:
+
+```{r}
+thresh <- 0.9
+LepiWhi_metier_frequency <- metier_frequency(data = LepiWhi_data_land_bymetier_byyear)
+plot_metier_frequency(LepiWhi_metier_frequency,thresh,species)
+```
+
+Which ones are important ? Those whose cumulative frequency is under the threshold.
+
+```{r}
+LepiWhi_main_metiers <- main_metiers(freq_data = LepiWhi_metier_frequency,thresh)
+```
+
+Plotting:
+
+```{r}
+LepiWhi_plot_land_bymetier_byyear <- plot_land_bymetier_byyear(data = LepiWhi_data_land_bymetier_byyear,
+                                                             main_metier = LepiWhi_main_metiers,
+                                                             species = species)
+for(i in seq(length(LepiWhi_plot_land_bymetier_byyear))){print(LepiWhi_plot_land_bymetier_byyear[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(LepiWhi_data_land_bymetier_byyear,species,metrics)
+```
+
+In order to improve model capacity by correcting metier target factors, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file :
+
+```{r}
+LepiWhi_ratio_land_bymetier_byyear <- ratio_bymetier(data = LepiWhi_data_land_bymetier_byyear,species)
+```
+
+#### Landings by metier by season
+
+```{r}
+metrics <- "landings by metier by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+LepiWhi_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = LepiWhi_sim_byseason,
+                                                                   species = spp_code,
+                                                                   years = years,
+                                                                   obs_data_path = obs_data_path,
+                                                                   export = F,
+                                                                   export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+LepiWhi_plot_land_bymetier_byseason <- plot_land_bymetier_byseason(data = LepiWhi_data_land_bymetier_byseason,
+                                                                   main_metier = LepiWhi_main_metiers,
+                                                                   species = species)
+for(i in seq(length(LepiWhi_plot_land_bymetier_byseason))){print(LepiWhi_plot_land_bymetier_byseason[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(LepiWhi_data_land_bymetier_byseason,species,metrics)
+```
+
+#### Total abundance
+
+```{r}
+metrics <- "total abundance"
+```
+
+Preparation of data for plotting:
+
+```{r}
+LepiWhi_data_N_total <- prep_total_N(sim_data = LepiWhi_sim_N,
+                                   species = spp_code,
+                                   years = years,
+                                   obs_data_path = obs_data_path,
+                                   export = F,
+                                   export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+plot_N_total(LepiWhi_data_N_total,species)
+plot_diagonal(LepiWhi_data_N_total,species,metrics)
+```
+
+#### Abundance by age group
+
+```{r}
+metrics <- "abundance by group"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE,warning=FALSE}
+LepiWhi_data_N_agegroup <- prep_N_agegroup(sim_data = LepiWhi_sim_N,
+                                         species = spp_code,
+                                         years = years,
+                                         obs_data_path = obs_data_path,
+                                         export = F,
+                                         export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+LepiWhi_plot_N_bygroup_byyear <- plot_N_agegroup(LepiWhi_data_N_agegroup,species)
+for(i in seq(length(LepiWhi_plot_N_bygroup_byyear))){ 
+  print(LepiWhi_plot_N_bygroup_byyear[[i]])
+}
+
+plot_diagonal(LepiWhi_data_N_agegroup,species,metrics)
+```
+
+#### SSB
+
+```{r}
+metrics <- "SSB"
+```
+
+Preparation of data for plotting:
+
+```{r}
+LepiWhi_data_ssb <- prep_SSB(sim_data = LepiWhi_sim_SSB,
+                           species = spp_code,
+                           years = years,
+                           obs_data_path = obs_data_path,
+                           export = F,
+                           export_path = comp_path)  
+```
+
+Plotting:
+
+```{r}
+plot_SSB(LepiWhi_data_ssb,species)
+plot_diagonal(LepiWhi_data_ssb,species,metrics)
+```
+
+Plotting (lines):
+
+```{r}
+plot_SSB_line(LepiWhi_data_ssb,species)
+```
+
+#### Fishing mortality by age group
+
+```{r}
+metrics <- "F by group"
+```
+
+Preparation of data for plotting:
+
+```{r}
+LepiWhi_data_F_agegroup <- prep_F_agegroup(sim_data = LepiWhi_sim_F,
+                                         species = spp_code,
+                                         years = years,
+                                         obs_data_path = obs_data_path,
+                                         export = F,
+                                         export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+LepiWhi_plot_F_bygroup_byyear <- plot_F_agegroup(LepiWhi_data_F_agegroup,species)
+for(i in seq(length(LepiWhi_plot_F_bygroup_byyear))){ 
+  print(LepiWhi_plot_F_bygroup_byyear[[i]])
+}
+
+plot_diagonal(LepiWhi_data_F_agegroup,species,metrics)
+```
+
+### *Lophius piscatorius* {.tabset}
+
+```{r}
+species <- "Lophius piscatorius"
+spp_code <- str_replace(species," ","_")
+```
+
+Reading simulated dataset:
+
+```{r}
+Lophius_sim_byyear <- read_tidysim_byyear(species = spp_code, 
+                                        years = years,
+                                        path = sim_tidy_path)
+
+Lophius_sim_byseason <- read_tidysim_byseason(species = spp_code, 
+                                              years = years,
+                                              path = sim_tidy_path)
+
+Lophius_sim_N <- read_tidysim_N(species = spp_code, 
+                              years = years,
+                              path = sim_tidy_path)
+
+Lophius_sim_F <- read_tidysim_F(species = spp_code, 
+                              years = years,
+                              path = sim_tidy_path)
+
+Lophius_sim_SSB <- read_tidysim_SSB(species = spp_code, 
+                                  years = years,
+                                  path = sim_tidy_path)
+```
+
+#### Total catch
+
+```{r}
+metrics <- "total catch"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Lophius_data_catch_total_byyear <- prep_total_catch_byyear(sim_data = Lophius_sim_byyear,
+                                                           species = spp_code,
+                                                           years = years,
+                                                           obs_data_path = obs_data_path,
+                                                           export = F,
+                                                           export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_catch_total_byyear(Lophius_data_catch_total_byyear,species)
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Lophius_data_catch_total_byyear,species,metrics)
+```
+
+#### Catch by group ISIS by year
+
+```{r}
+metrics <- "catch by group"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Lophius_data_catch_groupisis_byyear <- prep_catch_groupisis_byyear(sim_data = Lophius_sim_byyear,
+                                                                   species = spp_code,
+                                                                   years = years,
+                                                                   obs_data_path = obs_data_path,
+                                                                   export = F,
+                                                                   export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+Lophius_plot_catch_bygroup_byyear <- plot_catch_bygroup_byyear(Lophius_data_catch_groupisis_byyear,species)
+for(i in seq(length(Lophius_plot_catch_bygroup_byyear))){ 
+  print(Lophius_plot_catch_bygroup_byyear[[i]])
+}
+
+plot_diagonal(Lophius_data_catch_groupisis_byyear,species,metrics)
+```
+
+#### Total landings by season
+
+```{r}
+metrics <- "landings by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Lophius_data_land_byseason  <- prep_land_byseason(sim_data = Lophius_sim_byseason,
+                                                species = spp_code,
+                                                years = years,
+                                                obs_data_path = obs_data_path,
+                                                export = F,
+                                                export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_byseason(Lophius_data_land_byseason,species)
+plot_diagonal(Lophius_data_land_byseason,species,metrics)
+```
+
+In order to improve model capacity by correcting seasonnal accessibility, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file.
+
+```{r}
+Lophius_ratio_land_byseason <- ratio_byseason(data = Lophius_data_land_byseason,species)
+```
+
+#### Landings by year by country
+
+```{r}
+metrics <- "landings by country"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Lophius_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Lophius_sim_byyear,
+                                                                 species = spp_code,
+                                                                 years = years,
+                                                                 obs_data_path = obs_data_path,
+                                                                 export = F,
+                                                                 export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_bycountry_byyear(Lophius_data_land_bycountry_byyear,species)
+plot_diagonal(Lophius_data_land_bycountry_byyear,species,metrics)
+```
+
+#### Landings by metier by year
+
+```{r}
+metrics <- "landings by metier"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Lophius_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Lophius_sim_byyear,
+                                                             species = spp_code,
+                                                             years = years,
+                                                             obs_data_path = obs_data_path,
+                                                             export = F,
+                                                             export_path = comp_path)
+```
+
+View the respective importance of each metier:
+
+```{r}
+thresh <- 0.9
+Lophius_metier_frequency <- metier_frequency(data = Lophius_data_land_bymetier_byyear)
+plot_metier_frequency(Lophius_metier_frequency,thresh,species)
+```
+
+Which ones are important ? Those whose cumulative frequency is under the threshold.
+
+```{r}
+Lophius_main_metiers <- main_metiers(freq_data = Lophius_metier_frequency,thresh)
+```
+
+Plotting:
+
+```{r}
+Lophius_plot_land_bymetier_byyear <- plot_land_bymetier_byyear(data = Lophius_data_land_bymetier_byyear,
+                                                             main_metier = Lophius_main_metiers,
+                                                             species = species)
+for(i in seq(length(Lophius_plot_land_bymetier_byyear))){print(Lophius_plot_land_bymetier_byyear[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Lophius_data_land_bymetier_byyear,species,metrics)
+```
+
+In order to improve model capacity by correcting metier target factors, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file :
+
+```{r}
+Lophius_ratio_land_bymetier_byyear <- ratio_bymetier(data = Lophius_data_land_bymetier_byyear,species)
+```
+
+#### Landings by metier by season
+
+```{r}
+metrics <- "landings by metier by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Lophius_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = Lophius_sim_byseason,
+                                                                   species = spp_code,
+                                                                   years = years,
+                                                                   obs_data_path = obs_data_path,
+                                                                   export = F,
+                                                                   export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+Lophius_plot_land_bymetier_byseason <- plot_land_bymetier_byseason(data = Lophius_data_land_bymetier_byseason,
+                                                                 main_metier = Lophius_main_metiers,
+                                                                 species = species)
+for(i in seq(length(Lophius_plot_land_bymetier_byseason))){print(Lophius_plot_land_bymetier_byseason[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Lophius_data_land_bymetier_byseason,species,metrics)
+```
+
+#### Total abundance
+
+```{r}
+metrics <- "total abundance"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Lophius_data_N_total <- prep_total_N(sim_data = Lophius_sim_N,
+                                   species = spp_code,
+                                   years = years,
+                                   obs_data_path = obs_data_path,
+                                   export = F,
+                                   export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+plot_N_total(Lophius_data_N_total,species)
+plot_diagonal(Lophius_data_N_total,species,metrics)
+```
+
+#### Abundance by age group
+
+```{r}
+metrics <- "abundance by group"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE,warning=FALSE}
+Lophius_data_N_agegroup <- prep_N_agegroup(sim_data = Lophius_sim_N,
+                                         species = spp_code,
+                                         years = years,
+                                         obs_data_path = obs_data_path,
+                                         export = F,
+                                         export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+Lophius_plot_N_bygroup_byyear <- plot_N_agegroup(Lophius_data_N_agegroup,species)
+for(i in seq(length(Lophius_plot_N_bygroup_byyear))){ 
+  print(Lophius_plot_N_bygroup_byyear[[i]])
+}
+
+plot_diagonal(Lophius_data_N_agegroup,species,metrics)
+```
+
+#### SSB
+
+```{r}
+metrics <- "SSB"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Lophius_data_ssb <- prep_SSB(sim_data = Lophius_sim_SSB,
+                           species = spp_code,
+                           years = years,
+                           obs_data_path = obs_data_path,
+                           export = F,
+                           export_path = comp_path)  
+```
+
+Plotting:
+
+```{r}
+plot_SSB(Lophius_data_ssb,species)
+plot_diagonal(Lophius_data_ssb,species,metrics)
+```
+
+Plotting (lines):
+
+```{r}
+plot_SSB_line(Lophius_data_ssb,species)
+```
+
+#### Fishing mortality by age group
+
+```{r}
+metrics <- "F by group"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Lophius_data_F_agegroup <- prep_F_agegroup(sim_data = Lophius_sim_F,
+                                         species = spp_code,
+                                         years = years,
+                                         obs_data_path = obs_data_path,
+                                         export = F,
+                                         export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+Lophius_plot_F_bygroup_byyear <- plot_F_agegroup(Lophius_data_F_agegroup,species)
+for(i in seq(length(Lophius_plot_F_bygroup_byyear))){ 
+  print(Lophius_plot_F_bygroup_byyear[[i]])
+}
+
+plot_diagonal(Lophius_data_F_agegroup,species,metrics)
+```
+
+### *Merluccius merluccius* {.tabset}
+
+```{r}
+species <- "Merluccius merluccius"
+spp_code <- str_replace(species," ","_")
+```
+
+Reading simulated dataset:
+
+```{r}
+Merluccius_sim_byyear <- read_tidysim_byyear(species = spp_code, 
+                                             years = years,
+                                             path = sim_tidy_path)
+
+Merluccius_sim_byseason <- read_tidysim_byseason(species = spp_code, 
+                                                 years = years,
+                                                 path = sim_tidy_path)
+
+Merluccius_sim_N <- read_tidysim_N(species = spp_code, 
+                              years = years,
+                              path = sim_tidy_path)
+
+Merluccius_sim_F <- read_tidysim_F(species = spp_code, 
+                              years = years,
+                              path = sim_tidy_path)
+
+Merluccius_sim_SSB <- read_tidysim_SSB(species = spp_code, 
+                                  years = years,
+                                  path = sim_tidy_path)
+```
+
+#### Total catch
+
+```{r}
+metrics <- "total catch"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Merluccius_data_catch_total_byyear <- prep_total_catch_byyear(sim_data = Merluccius_sim_byyear,
+                                                              species = spp_code,
+                                                              years = years,
+                                                              obs_data_path = obs_data_path,
+                                                              export = F,
+                                                              export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_catch_total_byyear(Merluccius_data_catch_total_byyear,species)
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Merluccius_data_catch_total_byyear,species,metrics)
+```
+
+#### Catch by age group by year
+
+```{r}
+metrics <- "catch by group"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Merluccius_data_catch_agegroup_byyear <- prep_catch_agegroup_byyear(sim_data = Merluccius_sim_byyear,
+                                                                    species = spp_code,
+                                                                    years = years,
+                                                                    obs_data_path = obs_data_path,
+                                                                    corresp_path = AgeLength_tables_path,
+                                                                    export = F,
+                                                                    export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_catch_byage_merluccius(Merluccius_data_catch_agegroup_byyear)
+plot_diagonal(Merluccius_data_catch_agegroup_byyear,species,metrics)
+```
+
+#### Total landings by season
+
+```{r}
+metrics <- "landings by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Merluccius_data_land_byseason  <- prep_land_byseason(sim_data = Merluccius_sim_byseason,
+                                                     species = spp_code,
+                                                     years = years,
+                                                     obs_data_path = obs_data_path,
+                                                     export = F,
+                                                     export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_byseason(Merluccius_data_land_byseason,species)
+plot_diagonal(Merluccius_data_land_byseason,species,metrics)
+```
+
+In order to improve model capacity by correcting seasonnal accessibility, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file.
+
+```{r}
+Merluccius_ratio_land_byseason <- ratio_byseason(data = Merluccius_data_land_byseason,species)
+```
+
+#### Landings by year by country
+
+```{r}
+metrics <- "landings by country"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Merluccius_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Merluccius_sim_byyear,
+                                                                    species = spp_code,
+                                                                    years = years,
+                                                                    obs_data_path = obs_data_path,
+                                                                    export = F,
+                                                                    export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_bycountry_byyear(Merluccius_data_land_bycountry_byyear,species)
+plot_diagonal(Merluccius_data_land_bycountry_byyear,species,metrics)
+```
+
+#### Landings by metier by year
+
+```{r}
+metrics <- "landings by metier"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Merluccius_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Merluccius_sim_byyear,
+                                                             species = spp_code,
+                                                             years = years,
+                                                             obs_data_path = obs_data_path,
+                                                             export = F,
+                                                             export_path = comp_path)
+```
+
+View the respective importance of each metier:
+
+```{r}
+thresh <- 0.9
+Merluccius_metier_frequency <- metier_frequency(data = Merluccius_data_land_bymetier_byyear)
+plot_metier_frequency(Merluccius_metier_frequency,thresh,species)
+```
+
+Which ones are important ? Those whose cumulative frequency is under the threshold.
+
+```{r}
+Merluccius_main_metiers <- main_metiers(freq_data = Merluccius_metier_frequency,thresh)
+```
+
+Plotting:
+
+```{r}
+Merluccius_plot_land_bymetier_byyear <- plot_land_bymetier_byyear(data = Merluccius_data_land_bymetier_byyear,
+                                                             main_metier = Merluccius_main_metiers,
+                                                             species = species)
+for(i in seq(length(Merluccius_plot_land_bymetier_byyear))){print(Merluccius_plot_land_bymetier_byyear[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Merluccius_data_land_bymetier_byyear,species,metrics)
+```
+
+In order to improve model capacity by correcting metier target factors, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file :
+
+```{r}
+Merluccius_ratio_land_bymetier_byyear <- ratio_bymetier(data = Merluccius_data_land_bymetier_byyear,species)
+```
+
+#### Landings by metier by season
+
+```{r}
+metrics <- "landings by metier by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Merluccius_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = Merluccius_sim_byseason,
+                                                                       species = spp_code,
+                                                                       years = years,
+                                                                       obs_data_path = obs_data_path,
+                                                                       export = F,
+                                                                       export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+Merluccius_plot_land_bymetier_byseason <- plot_land_bymetier_byseason(data = Merluccius_data_land_bymetier_byseason,
+                                                                      main_metier = Merluccius_main_metiers,
+                                                                      species = species)
+for(i in seq(length(Merluccius_plot_land_bymetier_byseason))){print(Merluccius_plot_land_bymetier_byseason[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Merluccius_data_land_bymetier_byseason,species,metrics)
+```
+
+#### Total abundance
+
+```{r}
+metrics <- "total abundance"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Merluccius_data_N_total <- prep_total_N(sim_data = Merluccius_sim_N,
+                                   species = spp_code,
+                                   years = years,
+                                   obs_data_path = obs_data_path,
+                                   export = F,
+                                   export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+plot_N_total(Merluccius_data_N_total,species)
+plot_diagonal(Merluccius_data_N_total,species,metrics)
+```
+
+#### Abundance by age group
+
+```{r}
+metrics <- "abundance by group"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE,warning=FALSE}
+Merluccius_data_N_agegroup <- prep_N_agegroup(sim_data = Merluccius_sim_N,
+                                         species = spp_code,
+                                         years = years,
+                                         obs_data_path = obs_data_path,
+                                         export = F,
+                                         export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+Merluccius_plot_N_bygroup_byyear <- plot_N_agegroup(Merluccius_data_N_agegroup,species)
+for(i in seq(length(Merluccius_plot_N_bygroup_byyear))){ 
+  print(Merluccius_plot_N_bygroup_byyear[[i]])
+}
+
+plot_diagonal(Merluccius_data_N_agegroup,species,metrics)
+```
+
+#### SSB
+
+```{r}
+metrics <- "SSB"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Merluccius_data_ssb <- prep_SSB(sim_data = Merluccius_sim_SSB,
+                           species = spp_code,
+                           years = years,
+                           obs_data_path = obs_data_path,
+                           export = F,
+                           export_path = comp_path)  
+```
+
+Plotting:
+
+```{r}
+plot_SSB(Merluccius_data_ssb,species)
+plot_diagonal(Merluccius_data_ssb,species,metrics)
+```
+
+Plotting (lines):
+
+```{r}
+plot_SSB_line(Merluccius_data_ssb,species)
+```
+
+### *Nephrops norvegicus* {.tabset}
+
+```{r}
+species <- "Nephrops norvegicus"
+spp_code <- str_replace(species," ","_")
+```
+
+Reading simulated dataset:
+
+```{r}
+Nephrops_sim_byyear <- read_tidysim_byyear(species = spp_code, 
+                                           years = years,
+                                           path = sim_tidy_path)
+
+Nephrops_sim_byseason <- read_tidysim_byseason(species = spp_code, 
+                                               years = years,
+                                               path = sim_tidy_path)
+Nephrops_sim_catchN <- read_tidysim_catchN(species = spp_code, 
+                                           years = years,
+                                           path = sim_tidy_path)
+
+```
+
+#### Total catch
+
+```{r}
+metrics <- "total catch"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Nephrops_data_catch_total_byyear <- prep_total_catchN_byyear(sim_data = Nephrops_sim_catchN,
+                                                             species = spp_code,
+                                                             years = years,
+                                                             obs_data_path = obs_data_path,
+                                                             export = F,
+                                                             export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_catchN_total_byyear(Nephrops_data_catch_total_byyear,species)
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Nephrops_data_catch_total_byyear,species,metrics)
+```
+
+#### Catch by group ISIS by year
+
+```{r}
+metrics <- "catch by group"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Nephrops_data_catchN_agegroup_byyear <- prep_catchN_agegroup_byyear(sim_data = Nephrops_sim_catchN,
+                                                                    species = spp_code,
+                                                                    years = years,
+                                                                    obs_data_path = obs_data_path,
+                                                                    corresp_path = AgeLength_tables_path,
+                                                                    export = F,
+                                                                    export_path = comp_path)
+```
+
+Plotting:
+
+```{r,message=FALSE}
+Nephrops_plot_catchN_agegroup_byyear <- plot_catch_byage_nephrops(Nephrops_data_catchN_agegroup_byyear) 
+print(Nephrops_plot_catchN_agegroup_byyear[[1]])
+print(Nephrops_plot_catchN_agegroup_byyear[[2]])
+
+plot_diagonal(Nephrops_data_catchN_agegroup_byyear,species,metrics)
+```
+
+#### Total landings by season
+
+```{r}
+metrics <- "landings by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Nephrops_data_land_byseason  <- prep_land_byseason(sim_data = Nephrops_sim_byseason,
+                                                   species = spp_code,
+                                                   years = years,
+                                                   obs_data_path = obs_data_path,
+                                                   export = F,
+                                                   export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_byseason(Nephrops_data_land_byseason,species)
+plot_diagonal(Nephrops_data_land_byseason,species,metrics)
+```
+
+In order to improve model capacity by correcting seasonnal accessibility, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file.
+
+```{r}
+Nephrops_ratio_land_byseason <- ratio_byseason(data = Nephrops_data_land_byseason,species)
+```
+
+#### Landings by year by country
+
+```{r}
+metrics <- "landings by country"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Nephrops_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Nephrops_sim_byyear,
+                                                                  species = spp_code,
+                                                                  years = years,
+                                                                  obs_data_path = obs_data_path,
+                                                                  export = F,
+                                                                  export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_bycountry_byyear(Nephrops_data_land_bycountry_byyear,species)
+plot_diagonal(Nephrops_data_land_bycountry_byyear,species,metrics)
+```
+
+#### Landings by metier by year
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Nephrops_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Nephrops_sim_byyear,
+                                                             species = spp_code,
+                                                             years = years,
+                                                             obs_data_path = obs_data_path,
+                                                             export = F,
+                                                             export_path = comp_path)
+```
+
+View the respective importance of each metier:
+
+```{r}
+thresh <- 0.9
+Nephrops_metier_frequency <- metier_frequency(data = Nephrops_data_land_bymetier_byyear)
+plot_metier_frequency(Nephrops_metier_frequency,thresh,species)
+```
+
+Which ones are important ? Those whose cumulative frequency is under the threshold.
+
+```{r}
+Nephrops_main_metiers <- main_metiers(freq_data = Nephrops_metier_frequency,thresh)
+```
+
+Plotting:
+
+```{r}
+Nephrops_plot_land_bymetier_byyear <- plot_land_bymetier_byyear(data = Nephrops_data_land_bymetier_byyear,
+                                                             main_metier = Nephrops_main_metiers,
+                                                             species = species)
+for(i in seq(length(Nephrops_plot_land_bymetier_byyear))){print(Nephrops_plot_land_bymetier_byyear[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Nephrops_data_land_bymetier_byyear,species,metrics)
+```
+
+In order to improve model capacity by correcting metier target factors, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file :
+
+```{r}
+Nephrops_ratio_land_bymetier_byyear <- ratio_bymetier(data = Nephrops_data_land_bymetier_byyear,species)
+```
+
+#### Landings by metier by season
+
+```{r}
+metrics <- "landings by metier by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Nephrops_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = Nephrops_sim_byseason,
+                                                                     species = spp_code,
+                                                                     years = years,
+                                                                     obs_data_path = obs_data_path,
+                                                                     export = F,
+                                                                     export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+Nephrops_plot_land_bymetier_byseason <- plot_land_bymetier_byseason(data = Nephrops_data_land_bymetier_byseason,
+                                                                    main_metier = Nephrops_main_metiers,
+                                                                    species = species)
+for(i in seq(length(Nephrops_plot_land_bymetier_byseason))){print(Nephrops_plot_land_bymetier_byseason[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Nephrops_data_land_bymetier_byseason,species,metrics)
+```
+
+### *Raja clavata* {.tabset}
+
+```{r}
+species <- "Raja clavata"
+spp_code <- str_replace(species," ","_")
+```
+
+Reading simulated dataset:
+
+```{r}
+Raja_sim_byyear <- read_tidysim_byyear(species = spp_code, 
+                                        years = years,
+                                        path = sim_tidy_path)
+
+Raja_sim_byseason <- read_tidysim_byseason(species = spp_code, 
+                                           years = years,
+                                           path = sim_tidy_path)
+
+Raja_sim_N <- read_tidysim_N(species = spp_code, 
+                              years = years,
+                              path = sim_tidy_path)
+
+Raja_sim_F <- read_tidysim_F(species = spp_code, 
+                              years = years,
+                              path = sim_tidy_path)
+
+Raja_sim_SSB <- read_tidysim_SSB(species = spp_code, 
+                                  years = years,
+                                  path = sim_tidy_path)
+```
+
+#### Total catch
+
+```{r}
+metrics <- "total catch"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Raja_data_catch_total_byyear <- prep_total_land_byyear(sim_data = Raja_sim_byyear,
+                                                       species = spp_code,
+                                                       years = years,
+                                                       obs_data_path = obs_data_path,
+                                                       export = F,
+                                                       export_path = comp_path)
+```
+
+Plotting:
+
+```{r,eval=T}
+plot_catch_total_byyear(Raja_data_catch_total_byyear,species)
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Raja_data_catch_total_byyear,species,metrics)
+```
+
+#### Total landings by season
+
+```{r}
+metrics <- "landings by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Raja_data_land_byseason  <- prep_land_byseason(sim_data = Raja_sim_byseason,
+                                               species = spp_code,
+                                               years = years,
+                                               obs_data_path = obs_data_path,
+                                               export = F,
+                                               export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_byseason(Raja_data_land_byseason,species)
+plot_diagonal(Raja_data_land_byseason,species,metrics)
+```
+
+In order to improve model capacity by correcting seasonnal accessibility, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file.
+
+```{r}
+Raja_ratio_land_byseason <- ratio_byseason(data = Raja_data_land_byseason,species)
+```
+
+#### Landings by year by country
+
+```{r}
+metrics <- "landings by country"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Raja_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Raja_sim_byyear,
+                                                              species = spp_code,
+                                                              years = years,
+                                                              obs_data_path = obs_data_path,
+                                                              export = F,
+                                                              export_path = comp_path)
+```
+
+Plotting:
+
+```{r,eval=T}
+plot_land_bycountry_byyear(Raja_data_land_bycountry_byyear,species)
+plot_diagonal(Raja_data_land_bycountry_byyear,species,metrics)
+```
+
+#### Landings by metier by year
+
+```{r}
+metrics <- "landings by metier"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Raja_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Raja_sim_byyear,
+                                                            species = spp_code,
+                                                            years = years,
+                                                            obs_data_path = obs_data_path,
+                                                            export = F,
+                                                            export_path = comp_path)
+```
+
+View the respective importance of each metier:
+
+```{r}
+thresh <- 0.9
+Raja_metier_frequency <- metier_frequency(data = Raja_data_land_bymetier_byyear)
+plot_metier_frequency(Raja_metier_frequency,thresh,species)
+```
+
+Which ones are important ? Those whose cumulative frequency is under the threshold.
+
+```{r}
+Raja_main_metiers <- main_metiers(freq_data = Raja_metier_frequency,thresh)
+```
+
+Plotting:
+
+```{r}
+Raja_plot_land_bymetier_byyear <- plot_land_bymetier_byyear(data = Raja_data_land_bymetier_byyear,
+                                                             main_metier = Raja_main_metiers,
+                                                             species = species)
+for(i in seq(length(Raja_plot_land_bymetier_byyear))){print(Raja_plot_land_bymetier_byyear[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Raja_data_land_bymetier_byyear,species,metrics)
+```
+
+In order to improve model capacity by correcting metier target factors, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file :
+
+```{r}
+Raja_ratio_land_bymetier_byyear <- ratio_bymetier(data = Raja_data_land_bymetier_byyear,species)
+```
+
+#### Landings by metier by season
+
+```{r}
+metrics <- "landings by metier by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Raja_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = Raja_sim_byseason,
+                                                                 species = spp_code,
+                                                                 years = years,
+                                                                 obs_data_path = obs_data_path,
+                                                                 export = F,
+                                                                 export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+Raja_plot_land_bymetier_byseason <- plot_land_bymetier_byseason(data = Raja_data_land_bymetier_byseason,
+                                                                 main_metier = Raja_main_metiers,
+                                                                 species = species)
+for(i in seq(length(Raja_plot_land_bymetier_byseason))){print(Raja_plot_land_bymetier_byseason[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Raja_data_land_bymetier_byseason,species,metrics)
+```
+
+#### Total abundance
+
+```{r}
+metrics <- "total abundance"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Raja_data_N_total <- prep_total_N(sim_data = Raja_sim_N,
+                                  species = spp_code,
+                                  years = years,
+                                  obs_data_path = obs_data_path,
+                                  export = F,
+                                  export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+plot_N_total(Raja_data_N_total,species)
+plot_diagonal(Raja_data_N_total,species,metrics)
+```
+
+#### SSB
+
+```{r}
+metrics <- "SSB"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Raja_data_ssb <- prep_SSB(sim_data = Raja_sim_SSB,
+                          species = spp_code,
+                          years = years,
+                          obs_data_path = obs_data_path,
+                          export = F,
+                          export_path = comp_path)  
+```
+
+Plotting:
+
+```{r}
+plot_SSB(Raja_data_ssb,species)
+plot_diagonal(Raja_data_ssb,species,metrics)
+```
+
+Plotting (lines):
+
+```{r}
+plot_SSB_line(Raja_data_ssb,species)
+```
+
+#### Fishing mortality by age group
+
+```{r}
+metrics <- "F by group"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Raja_data_F_agegroup <- prep_F_agegroup(sim_data = Raja_sim_F,
+                                        species = spp_code,
+                                        years = years,
+                                        obs_data_path = obs_data_path,
+                                        export = F,
+                                        export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+Raja_plot_F_bygroup_byyear <- plot_F_agegroup(Raja_data_F_agegroup,species)
+for(i in seq(length(Raja_plot_F_bygroup_byyear))){ 
+  print(Raja_plot_F_bygroup_byyear[[i]])
+}
+
+plot_diagonal(Raja_data_F_agegroup,species,metrics)
+```
+
+### *Leucoraja naevus* {.tabset}
+
+```{r}
+species <- "Leucoraja naevus"
+spp_code <- str_replace(species," ","_")
+```
+
+Reading simulated dataset:
+
+```{r}
+Leucoraja_sim_byyear <- read_tidysim_byyear(species = spp_code, 
+                                            years = years,
+                                            path = sim_tidy_path)
+
+Leucoraja_sim_byseason <- read_tidysim_byseason(species = spp_code, 
+                                                years = years,
+                                                path = sim_tidy_path)
+
+Leucoraja_sim_N <- read_tidysim_N(species = spp_code, 
+                                  years = years,
+                                  path = sim_tidy_path)
+
+Leucoraja_sim_F <- read_tidysim_F(species = spp_code, 
+                                  years = years,
+                                  path = sim_tidy_path)
+
+Leucoraja_sim_SSB <- read_tidysim_SSB(species = spp_code, 
+                                      years = years,
+                                      path = sim_tidy_path)
+```
+
+#### Total catch
+
+```{r}
+metrics <- "total catch"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Leucoraja_data_catch_total_byyear <- prep_total_land_byyear(sim_data = Leucoraja_sim_byyear,
+                                                            species = spp_code,
+                                                            years = years,
+                                                            obs_data_path = obs_data_path,
+                                                            export = F,
+                                                            export_path = comp_path)
+```
+
+Plotting:
+
+```{r,eval=T}
+plot_catch_total_byyear(Leucoraja_data_catch_total_byyear,species)
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Leucoraja_data_catch_total_byyear,species,metrics)
+```
+
+#### Total landings by season
+
+```{r}
+metrics <- "landings by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Leucoraja_data_land_byseason  <- prep_land_byseason(sim_data = Leucoraja_sim_byseason,
+                                                    species = spp_code,
+                                                    years = years,
+                                                    obs_data_path = obs_data_path,
+                                                    export = F,
+                                                    export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+plot_land_byseason(Leucoraja_data_land_byseason,species)
+plot_diagonal(Leucoraja_data_land_byseason,species,metrics)
+```
+
+In order to improve model capacity by correcting seasonal accessibility, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file.
+
+```{r}
+Leucoraja_ratio_land_byseason <- ratio_byseason(data = Leucoraja_data_land_byseason,species)
+```
+
+#### Landings by year by country
+
+```{r}
+metrics <- "landings by country"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Leucoraja_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Leucoraja_sim_byyear,
+                                                                   species = spp_code,
+                                                                   years = years,
+                                                                   obs_data_path = obs_data_path,
+                                                                   export = F,
+                                                                   export_path = comp_path)
+```
+
+Plotting:
+
+```{r, eval=T}
+plot_land_bycountry_byyear(Leucoraja_data_land_bycountry_byyear,species)
+plot_diagonal(Leucoraja_data_land_bycountry_byyear,species,metrics)
+```
+
+#### Landings by metier by year
+
+```{r}
+metrics <- "landings by metier"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Leucoraja_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Leucoraja_sim_byyear,
+                                                             species = spp_code,
+                                                             years = years,
+                                                             obs_data_path = obs_data_path,
+                                                             export = F,
+                                                             export_path = comp_path)
+```
+
+View the respective importance of each metier:
+
+```{r}
+thresh <- 0.9
+Leucoraja_metier_frequency <- metier_frequency(data = Leucoraja_data_land_bymetier_byyear)
+plot_metier_frequency(Leucoraja_metier_frequency,thresh,species)
+```
+
+Which ones are important ? Those whose cumulative frequency is under the threshold.
+
+```{r}
+Leucoraja_main_metiers <- main_metiers(freq_data = Leucoraja_metier_frequency,thresh)
+```
+
+Plotting:
+
+```{r}
+Leucoraja_plot_land_bymetier_byyear <- plot_land_bymetier_byyear(data = Leucoraja_data_land_bymetier_byyear,
+                                                             main_metier = Leucoraja_main_metiers,
+                                                             species = species)
+for(i in seq(length(Leucoraja_plot_land_bymetier_byyear))){print(Leucoraja_plot_land_bymetier_byyear[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Leucoraja_data_land_bymetier_byyear,species,metrics)
+```
+
+In order to improve model capacity by correcting metier target factors, we compute the mean ratio between observed and simulated data. At the end it will be saved into a file :
+
+```{r}
+Leucoraja_ratio_land_bymetier_byyear <- ratio_bymetier(data = Leucoraja_data_land_bymetier_byyear,species)
+```
+
+#### Landings by metier by season
+
+```{r}
+metrics <- "landings by metier by season"
+```
+
+Preparation of data for plotting:
+
+```{r,message=FALSE}
+Leucoraja_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = Leucoraja_sim_byseason,
+                                                                      species = spp_code,
+                                                                      years = years,
+                                                                      obs_data_path = obs_data_path,
+                                                                      export = F,
+                                                                      export_path = comp_path)
+```
+
+Plotting:
+
+```{r}
+Leucoraja_plot_land_bymetier_byseason <- plot_land_bymetier_byseason(data = Leucoraja_data_land_bymetier_byseason,
+                                                                     main_metier = Leucoraja_main_metiers,
+                                                                     species = species)
+for(i in seq(length(Leucoraja_plot_land_bymetier_byseason))){print(Leucoraja_plot_land_bymetier_byseason[[i]])}
+```
+
+Dispersion plot:
+
+```{r}
+plot_diagonal(Leucoraja_data_land_bymetier_byseason,species,metrics)
+```
+
+#### Total abundance
+
+```{r}
+metrics <- "total abundance"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Leucoraja_data_N_total <- prep_total_N(sim_data = Leucoraja_sim_N,
+                                   species = spp_code,
+                                   years = years,
+                                   obs_data_path = obs_data_path,
+                                   export = F,
+                                   export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+plot_N_total(Leucoraja_data_N_total,species)
+plot_diagonal(Leucoraja_data_N_total,species,metrics)
+```
+
+#### SSB
+
+```{r}
+metrics <- "SSB"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Leucoraja_data_ssb <- prep_SSB(sim_data = Leucoraja_sim_SSB,
+                           species = spp_code,
+                           years = years,
+                           obs_data_path = obs_data_path,
+                           export = F,
+                           export_path = comp_path)  
+```
+
+Plotting:
+
+```{r}
+plot_SSB(Leucoraja_data_ssb,species)
+plot_diagonal(Leucoraja_data_ssb,species,metrics)
+```
+
+Plotting (lines):
+
+```{r}
+plot_SSB_line(Leucoraja_data_ssb,species)
+```
+
+#### Fishing mortality by age group
+
+```{r}
+metrics <- "F by group"
+```
+
+Preparation of data for plotting:
+
+```{r}
+Leucoraja_data_F_agegroup <- prep_F_agegroup(sim_data = Leucoraja_sim_F,
+                                         species = spp_code,
+                                         years = years,
+                                         obs_data_path = obs_data_path,
+                                         export = F,
+                                         export_path = comp_path)
+
+```
+
+Plotting:
+
+```{r}
+Leucoraja_plot_F_bygroup_byyear <- plot_F_agegroup(Leucoraja_data_F_agegroup,species)
+for(i in seq(length(Leucoraja_plot_F_bygroup_byyear))){ 
+  print(Leucoraja_plot_F_bygroup_byyear[[i]])
+}
+
+plot_diagonal(Leucoraja_data_F_agegroup,species,metrics)
+```
+
+## Exportation of correction factors
+
+Let us gather target factors correction and save it in a file:
+
+```{r}
+if(export_corrections_TF){
+  TFcorrections <- rbind(Solea_ratio_land_bymetier_byyear,
+                         LepiWhi_ratio_land_bymetier_byyear,
+                         Lophius_ratio_land_bymetier_byyear,
+                         Merluccius_ratio_land_bymetier_byyear,
+                         Nephrops_ratio_land_bymetier_byyear,
+                         Raja_ratio_land_bymetier_byyear,
+                         Leucoraja_ratio_land_bymetier_byyear) 
+  export_newTF(TFcorrections,previousTF_path,exportedTF_path) 
+}
+```
+
+Let us do the same for season accessibility:
+
+```{r,message=FALSE}
+if(export_corrections_q){
+  q_season_corrections <- rbind(Solea_ratio_land_byseason,
+                                LepiWhi_ratio_land_byseason,
+                                Lophius_ratio_land_byseason,
+                                Merluccius_ratio_land_byseason,
+                                Nephrops_ratio_land_byseason,
+                                Raja_ratio_land_byseason,
+                                Leucoraja_ratio_land_byseason) 
+  export_new_q_csv(q_season_corrections,previous_q_path,exported_q_path) 
+  export_new_q_semantics(q_season_corrections,previous_q_path,exported_q_path) 
+}
+
+```
+
+Let us display the new mean accessibility curves by species:
+
+```{r}
+for(i in seq(length(Species))){
+  this_species <- Species[i]
+  if(this_species != "Leucoraja_naevus"){
+    print(plot_mean_access(species = this_species,
+                           access_path = exported_q_path))
+  }
+}
+
+```
