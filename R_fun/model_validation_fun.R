@@ -5585,10 +5585,10 @@ export_new_q_csv <- function(q_season_corrections,previous_q_path,exported_q_pat
     Q3 <- q_season_corrections %>% filter(Species == thisSpp,Season==3) %>% select(ratio) %>% as.numeric()
     Q4 <- q_season_corrections %>% filter(Species == thisSpp,Season==4) %>% select(ratio) %>% as.numeric()
     
-    matrix_list <- list.files(paste0(previous_q_path,"/csv/",thisSpp_code),pattern="\\.csv")
+    matrix_list <- list.files(paste0(previous_q_path,"/",thisSpp_code),pattern="\\.csv")
     for(j in seq(matrix_list)){
       
-        data <- read.table(file = paste0(previous_q_path,"/csv/",thisSpp_code,"/",matrix_list[j]),
+        data <- read.table(file = paste0(previous_q_path,"/",thisSpp_code,"/",matrix_list[j]),
                            sep=";",
                            header = T)
         
@@ -5618,7 +5618,7 @@ export_new_q_csv <- function(q_season_corrections,previous_q_path,exported_q_pat
                     sep_sep = sep_sep * Q3,
                     oct_oct = oct_oct * Q4,
                     nov_dec = nov_dec * Q4) %>%
-            write.table(file = paste0(exported_q_path,"/csv/",thisSpp_code,"/",matrix_list[j]),
+            write.table(file = paste0(exported_q_path,"/",thisSpp_code,"/",matrix_list[j]),
                         sep = ";",
                         row.names=F)
           
@@ -5637,7 +5637,7 @@ export_new_q_csv <- function(q_season_corrections,previous_q_path,exported_q_pat
                    october = october * Q4,
                    november = november * Q4,
                    december = december * Q4) %>%
-            write.table(file = paste0(exported_q_path,"/csv/",thisSpp_code,"/",matrix_list[j]),
+            write.table(file = paste0(exported_q_path,"/",thisSpp_code,"/",matrix_list[j]),
                         sep = ";",
                         row.names=F)
           
@@ -5648,180 +5648,6 @@ export_new_q_csv <- function(q_season_corrections,previous_q_path,exported_q_pat
   }
   
   print("New accessibility matrices (.csv) exported !")
-  
-}  
-
-export_new_q_semantics <- function(q_season_corrections,previous_q_path,exported_q_path){
-  
-  Spp_list <- q_season_corrections %>% 
-    filter(Species != "Leucoraja naevus") %>% # impossible for this species to apply a seasonnal correction
-    select(Species) %>%
-    distinct()
-  
-  for(i in seq(nrow(Spp_list))){
-    
-    thisSpp <- Spp_list$Species[i]
-    thisSpp_code <- str_replace(thisSpp," ","_")
-    
-    Q1 <- q_season_corrections %>% filter(Species == thisSpp,Season==1) %>% select(ratio) %>% as.numeric()
-    Q2 <- q_season_corrections %>% filter(Species == thisSpp,Season==2) %>% select(ratio) %>% as.numeric()
-    Q3 <- q_season_corrections %>% filter(Species == thisSpp,Season==3) %>% select(ratio) %>% as.numeric()
-    Q4 <- q_season_corrections %>% filter(Species == thisSpp,Season==4) %>% select(ratio) %>% as.numeric()
-    
-    matrix_list <- list.files(paste0(previous_q_path,"/csv/",thisSpp_code),pattern="\\.txt")
-    for(j in seq(matrix_list)){
-      
-      data <- read.table(file = paste0(previous_q_path,"/csv/",thisSpp_code,"/",matrix_list[j]),
-                         sep=";",
-                         header = T)
-      
-      if(thisSpp == "Nephrops norvegicus"){
-        
-        # the seasonnality for this species is different
-        # NB: previously, all months were equivalent so before seasonal transformation, no need to respect names
-        if("january" %in% names(data)){
-          data <- data %>%
-            rename(jan_jan = january,
-                   feb_mar = february,
-                   apr_apr = march,
-                   may_jun = april,
-                   jul_aug = may,
-                   sep_sep = june,
-                   oct_oct = july,
-                   nov_dec = august) %>%
-            select(-c(september,october,november,december))
-        }
-        
-        data <- data %>%
-          mutate(jan_jan = jan_jan * Q1,
-                 feb_mar = feb_mar * Q1,
-                 apr_apr = apr_apr * Q2,
-                 may_jun = may_jun * Q2,
-                 jul_aug = jul_aug * Q3,
-                 sep_sep = sep_sep * Q3,
-                 oct_oct = oct_oct * Q4,
-                 nov_dec = nov_dec * Q4) %>%
-          pivot_longer(!q_name,names_to = "season",values_to = "q") %>%
-          mutate(begin = case_when(season == "jan_jan" ~ 0,
-                                   season == "feb_mar" ~ 1,
-                                   season == "apr_apr" ~ 3,
-                                   season == "may_jun" ~ 4,
-                                   season == "jul_aug" ~ 6,
-                                   season == "sep_sep" ~ 8,
-                                   season == "oct_oct" ~ 9,
-                                   season == "nov_dec" ~ 10),
-                 end = case_when(season == "jan_jan" ~ 0,
-                                 season == "feb_mar" ~ 2,
-                                 season == "apr_apr" ~ 3,
-                                 season == "may_jun" ~ 5,
-                                 season == "jul_aug" ~ 7,
-                                 season == "sep_sep" ~ 8,
-                                 season == "oct_oct" ~ 9,
-                                 season == "nov_dec" ~ 11),
-                 seas_coord = case_when(season == "jan_jan" ~ 0,
-                                        season == "feb_mar" ~ 1,
-                                        season == "apr_apr" ~ 2,
-                                        season == "may_jun" ~ 3,
-                                        season == "jul_aug" ~ 4,
-                                        season == "sep_sep" ~ 5,
-                                        season == "oct_oct" ~ 6,
-                                        season == "nov_dec" ~ 7),
-                 group_coord = str_sub(q_name,-2,-1)) %>%
-          mutate(group_coord = as.integer(group_coord),
-                 gp_semantics = paste0(thisSpp_code,"+",group_coord),
-                 season_semantics = paste0(thisSpp_code,"+",begin,"+",end))
-        
-      }else{
-        
-        data <- data %>% 
-          mutate(january = january * Q1,
-                 february = february * Q1,
-                 march = march * Q1,
-                 april = april * Q2,
-                 may = may * Q2,
-                 june = june * Q2,
-                 july = july * Q3,
-                 august = august * Q3,
-                 september = september * Q3,
-                 october = october * Q4,
-                 november = november * Q4,
-                 december = december * Q4) %>%
-          pivot_longer(!q_name,names_to = "season",values_to = "q") %>%
-          mutate(begin = case_when(season == "january" ~ 0,
-                                   season == "february" ~ 1,
-                                   season == "march" ~ 2,
-                                   season == "april" ~ 3,
-                                   season == "may" ~ 4,
-                                   season == "june" ~ 5,
-                                   season == "july" ~ 6,
-                                   season == "august" ~ 7,
-                                   season == "september" ~ 8,
-                                   season == "october" ~ 9,
-                                   season == "november" ~ 10,
-                                   season == "december" ~ 11),
-                 group_coord = str_sub(q_name,-2,-1)) %>%
-          mutate(end = begin, 
-                 seas_coord = begin, 
-                 group_coord = as.integer(group_coord),
-                 gp_semantics = paste0(thisSpp_code,"+",group_coord),
-                 season_semantics = paste0(thisSpp_code,"+",begin,"+",end))
-        
-      }
-      
-      
-      ## write new matrix
-      Gp_list <- data %>% 
-        select(gp_semantics,group_coord) %>% 
-        distinct() %>%
-        arrange(group_coord)
-      
-      Season_list <- data %>% 
-        select(season_semantics,seas_coord) %>% 
-        distinct() %>%
-        arrange(seas_coord)
-      
-      file_name <- paste0(exported_q_path,"/semantics/",thisSpp_code,"/",matrix_list[j]) %>%
-        str_replace(".csv",".txt")
-      
-        # line 1
-      write_lines(paste0("[",nrow(Gp_list),",",nrow(Season_list),"]"),
-                  file= file_name )
-      
-        #line 2
-      Line2 <- paste0("PopulationGroup:",Gp_list$gp_semantics[1])
-      if(nrow(Gp_list)>1){
-        for(k in 2:(nrow(Gp_list))){
-          Line2 <- paste(Line2,Gp_list$gp_semantics[k],sep=",")
-        }
-      }
-      write_lines(Line2,
-                  append = T,
-                  file = file_name)
-      
-        #line 3
-      Line3 <- paste0("PopulationSeasonInfo:",Season_list$season_semantics[1])
-      for(k in 2:(nrow(Season_list))){
-        Line3 <- paste(Line3,Season_list$season_semantics[k],sep=",")
-      }
-      write_lines(Line3,
-                  append = T,
-                  file = file_name)
-      
-        # subsequent lines
-      DatToWrite <- data %>% select(group_coord,seas_coord,q) 
-      write.table(DatToWrite,
-                  sep=";",
-                  append=T,
-                  row.names=F,
-                  col.names = F,
-                  file=file_name)
-      
-    }
-    
-    
-  }
-  
-  print("New accessibility matrices (semantics) exported !")
   
 }  
 
