@@ -13,6 +13,8 @@ This document is a guide for reproducing the analysis performed in the paper Ric
 
 * `accessibility values` contains the calibrated values of accessibility by species and by year at the different steps of the analysis.
 
+* `isis_db` contains the ISIS-Fish databases necessary to run all local simulations, both for calibration (except the LHS optimisation which are in `LHS_run` folders) and validation. These constitute versions 1 to 3b of the model.
+
 * `R_fun` contains R scripts with the all functions used in the project 
 
 * `LHS_run` contains all the files necessary to perform the simulation and analyses associated to the LHS plan on Ifremer super calculator (Datarmor). 
@@ -43,7 +45,13 @@ Rscript -e "rmarkdown::render('main_scripts/LHS_report.Rmd')"
 ```
 The resulting `.html` file shows by species and by year the value of the objective function for a range of accessibility values, and a comparison of reference *vs.* simulated values of catch by group for the best simulation. The accessibility profile is also displayed, including mean accessibility and estimations for each year. Values of accessibility by year by species are saved in `.csv` and semantics (readable by ISIS-Fish software) formats in the directory `accessibility_values/q1_LHS_outputs`.
 
-* **Assessment of model 1 by year**: Simulations of the model 1 can then be performed on a local computer, using ISS-Fish software, for a duration of one year (starting in 2015, 2016, 2017 and 2018). The necessary ISIS-Fish databases are provided in `isis_db/calibration_db` (use `macco_mod1_sim<year>_250708`). The simulation folders (generated automatically by ISIS-Fish during the simulation) must be stored in the directory `Sim_data/raw/step1_TF0q1`. Then, the assessment species by species, variable by variable, for all years, can be performed by executing the file `assessment_correction_step1`:
+* **Assessment of model 1 by year**: Simulations of the model 1 (set with optimised accessibility values) can then be performed on a local computer, using ISS-Fish software, for a duration of one year, starting in 2015, 2016, 2017 and 2018 (see below for a guide to launch ISIS-Fish simulation on a local computer). The necessary ISIS-Fish databases are provided in `isis_db/calibration_db` (use `macco_mod1_sim<year>_250708`). After running simulations, the  simulation folders containing results must be stored in the directory `Sim_data/raw/step1_TF0q1`. Then, the assessment species by species, variable by variable, for all years, can be performed by executing the file `assessment_correction_step1`:
 ```
 Rscript -e "rmarkdown::render('main_scripts/assessment_correction/assessment_correction_step1.Rmd')"
+```
+The resulting `.html` file contains plots of reference vs. simulation values comparison for all species and variables organised in different tabs. Corrections of target factors and accessibility by season are also exported. New java scripts coding for target factors are are saved in `TargetFactors/mod_2b` and new accessibility matrices (saved as `.csv`) are saved in `accessibility_values/q2_season_step2a`.
+
+* **Assessment of model 2a by year**: Model 2a is obtained by changing accessibility values of model 1 with new accessibility matrices produced in the previous step. The model can then be simulated for a duration of one year, starting in 2015, 2016, 2017 and 2018, as for model 1. The necessary ISIS-Fish databases are provided in `isis_db/calibration_db` (use `macco_mod2a_sim<year>_250716`). After running simulations, the  simulation folders containing results must be stored in the directory `Sim_data/raw/step2a_TF0q2`. Then, the assessment species by species, variable by variable, for all years, can be performed by executing the file `assessment_correction_step2a`:
+```
+Rscript -e "rmarkdown::render('main_scripts/assessment_correction/assessment_correction_step2a.Rmd')"
 ```
