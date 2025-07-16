@@ -2394,7 +2394,6 @@ if(export_corrections_q){
                                 Raja_ratio_land_byseason,
                                 Leucoraja_ratio_land_byseason) 
   export_new_q_csv(q_season_corrections,previous_q_path,exported_q_path) 
-  export_new_q_semantics(q_season_corrections,previous_q_path,exported_q_path) 
 }
 
 ```
