@@ -88,7 +88,6 @@ plot_obs_vs_sim(Solea2015_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Solea2015_best_set,save_path)
-save_q_noseason_semantics(Solea2015_best_set,save_path)
 ```
 
 #### 2016
@@ -132,7 +131,6 @@ plot_obs_vs_sim(Solea2016_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Solea2016_best_set,save_path)
-save_q_noseason_semantics(Solea2016_best_set,save_path)
 ```
 
 #### 2017
@@ -175,7 +173,6 @@ plot_obs_vs_sim(Solea2017_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Solea2017_best_set,save_path)
-save_q_noseason_semantics(Solea2017_best_set,save_path)
 ```
 
 
@@ -219,7 +216,6 @@ plot_obs_vs_sim(Solea2018_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Solea2018_best_set,save_path)
-save_q_noseason_semantics(Solea2018_best_set,save_path)
 ```
 
 #### Summary
@@ -283,7 +279,6 @@ plot_obs_vs_sim(Raja2015_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Raja2015_best_set,save_path)
-save_q_noseason_semantics(Raja2015_best_set,save_path)
 ```
 
 #### 2016
@@ -326,7 +321,6 @@ plot_obs_vs_sim(Raja2016_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Raja2016_best_set,save_path)
-save_q_noseason_semantics(Raja2016_best_set,save_path)
 ```
 
 #### 2017
@@ -369,7 +363,6 @@ plot_obs_vs_sim(Raja2017_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Raja2017_best_set,save_path)
-save_q_noseason_semantics(Raja2017_best_set,save_path)
 ```
 
 
@@ -413,7 +406,6 @@ plot_obs_vs_sim(Raja2018_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Raja2018_best_set,save_path)
-save_q_noseason_semantics(Raja2018_best_set,save_path)
 ```
 
 #### Summary
@@ -476,7 +468,6 @@ plot_obs_vs_sim(Lophius2015_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Lophius2015_best_set,save_path)
-save_q_noseason_semantics(Lophius2015_best_set,save_path)
 ```
 
 #### 2016
@@ -519,7 +510,6 @@ plot_obs_vs_sim(Lophius2016_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Lophius2016_best_set,save_path)
-save_q_noseason_semantics(Lophius2016_best_set,save_path)
 ```
 
 #### 2017
@@ -562,7 +552,6 @@ plot_obs_vs_sim(Lophius2017_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Lophius2017_best_set,save_path)
-save_q_noseason_semantics(Lophius2017_best_set,save_path)
 ```
 
 
@@ -606,7 +595,6 @@ plot_obs_vs_sim(Lophius2018_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Lophius2018_best_set,save_path)
-save_q_noseason_semantics(Lophius2018_best_set,save_path)
 ```
 
 #### Summary
@@ -668,7 +656,6 @@ plot_obs_vs_sim(Lepidorhombus2015_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Lepidorhombus2015_best_set,save_path)
-save_q_noseason_semantics(Lepidorhombus2015_best_set,save_path)
 ```
 
 #### 2016
@@ -711,7 +698,6 @@ plot_obs_vs_sim(Lepidorhombus2016_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Lepidorhombus2016_best_set,save_path)
-save_q_noseason_semantics(Lepidorhombus2016_best_set,save_path)
 ```
 
 #### 2017
@@ -754,7 +740,6 @@ plot_obs_vs_sim(Lepidorhombus2017_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Lepidorhombus2017_best_set,save_path)
-save_q_noseason_semantics(Lepidorhombus2017_best_set,save_path)
 ```
 
 
@@ -798,7 +783,6 @@ plot_obs_vs_sim(Lepidorhombus2018_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Lepidorhombus2018_best_set,save_path)
-save_q_noseason_semantics(Lepidorhombus2018_best_set,save_path)
 ```
 
 #### Summary
@@ -870,7 +854,6 @@ plot_obs_vs_sim_merluccius(Merluccius2015_best_set_glob)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Merluccius2015_best_set,save_path)
-save_q_noseason_semantics(Merluccius2015_best_set,save_path)
 ```
 
 
@@ -913,7 +896,6 @@ plot_obs_vs_sim_merluccius(Merluccius2016_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Merluccius2016_best_set,save_path)
-save_q_noseason_semantics(Merluccius2016_best_set,save_path)
 ```
 
 
@@ -957,7 +939,6 @@ plot_obs_vs_sim_merluccius(Merluccius2017_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Merluccius2017_best_set,save_path)
-save_q_noseason_semantics(Merluccius2017_best_set,save_path)
 ```
 
 
@@ -1003,7 +984,6 @@ plot_obs_vs_sim_merluccius(Merluccius2018_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Merluccius2018_best_set,save_path)
-save_q_noseason_semantics(Merluccius2018_best_set,save_path)
 ```
 
 
@@ -1071,7 +1051,6 @@ print(plotNephrops2015_obs_vs_sim[[2]])
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Nephrops2015_best_set,save_path)
-save_q_noseason_semantics(Nephrops2015_best_set,save_path)
 ```
 
 #### 2016
@@ -1116,7 +1095,6 @@ print(plotNephrops2016_obs_vs_sim[[2]])
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Nephrops2016_best_set,save_path)
-save_q_noseason_semantics(Nephrops2016_best_set,save_path)
 ```
 
 #### 2017
@@ -1161,7 +1139,6 @@ print(plotNephrops2017_obs_vs_sim[[2]])
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Nephrops2017_best_set,save_path)
-save_q_noseason_semantics(Nephrops2017_best_set,save_path)
 ```
 
 
@@ -1208,7 +1185,6 @@ print(plotNephrops2018_obs_vs_sim[[2]])
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Nephrops2018_best_set,save_path)
-save_q_noseason_semantics(Nephrops2018_best_set,save_path)
 ```
 
 
@@ -1273,7 +1249,6 @@ plot_obs_vs_sim(Leucoraja2015_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Leucoraja2015_best_set,save_path)
-save_q_noseason_semantics(Leucoraja2015_best_set,save_path)
 ```
 
 #### 2016
@@ -1316,7 +1291,6 @@ plot_obs_vs_sim(Leucoraja2016_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Leucoraja2016_best_set,save_path)
-save_q_noseason_semantics(Leucoraja2016_best_set,save_path)
 ```
 
 #### 2017
@@ -1359,7 +1333,6 @@ plot_obs_vs_sim(Leucoraja2017_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Leucoraja2017_best_set,save_path)
-save_q_noseason_semantics(Leucoraja2017_best_set,save_path)
 ```
 
 
@@ -1403,7 +1376,6 @@ plot_obs_vs_sim(Leucoraja2018_best_set)
 Save the accessibility matrix as .csv:
 ```{r}
 save_q_noseason_csv(Leucoraja2018_best_set,save_path)
-save_q_noseason_semantics(Leucoraja2018_best_set,save_path)
 ```
 
 #### Summary
