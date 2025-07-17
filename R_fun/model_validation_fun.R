@@ -5682,11 +5682,13 @@ export_newTF <- function(TFcorrections,previousTF_path,exportedTF_path){
         TF_new <- TF_old
       }
       
+      bracket <- grepl("}",TF_line)
+      start_line <- if_else(bracket,"} return","return")
       lines <- lines %>% 
         mutate(new_lines = if_else(old_lines==TF_line,
                                    if_else(str_detect(old_lines,"sel"),
-                                           paste("return", TF_new,"* sel"),
-                                           paste("return", TF_new)),
+                                           paste(start_line, TF_new,"* sel"),
+                                           paste(start_line, TF_new)),
                                    old_lines)) %>%
         mutate(new_lines = if_else(str_detect(new_lines,pattern="metier"),
                                     new_lines,
