@@ -154,10 +154,14 @@ land_fleet_ctry_met_seas_FR <- data.frame(readRDS(SACROIS_path)) %>%
                                    "G_HKE" = "G_MIX",
                                    "G_HKE" = "G_1",
                                    "G_LOW" = "G_low_activity_1",
+                                   "G_LOW" = "G_low_activity_2",
+                                   "G_LOW" = "G_low_activity_3",
                                    "L_HKE" = "L_3",
+                                   "L_HKE" = "L_2",
                                    "M_HKE" = "M_1",
                                    "M_LOW" = "M_low_activity_1",
-                                   "O_NEP" = "O_5"))  %>%
+                                   "O_NEP" = "O_5",
+                                   "G_SOL" = "G_MNZ"))  %>%
   filter(!grepl("metier_OTH",metier_isis)) %>%
   rename(year=REF_YEAR) %>%
   filter(grepl("bob_",fleet_isis)|grepl("other-",fleet_isis)|grepl("-10-",fleet_isis)) %>%
