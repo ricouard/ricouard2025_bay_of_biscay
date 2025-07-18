@@ -1226,6 +1226,20 @@ prep_land_bymetier_byfleet_byyear <- function(sim_data,obs_data_path,fleet_group
                                  word(metier,1,sep="-"),
                                  word(metier,1,sep="_Z"))) %>%
     mutate(metier_isis = word(metier_isis,1,sep="-")) %>%
+    mutate(metier_isis = fct_recode(metier_isis,### recoding metier name for correspondance with oserved data
+                                    "O_HKE" = "O_NS_DEF",
+                                    "O_HKE" = "O_NS_CEP",
+                                    "O_NEP" = "O_5",
+                                    "G_SOL" = "G_MNZ",
+                                    "G_HKE" = "G_MIX",
+                                    "G_HKE" = "G_1",
+                                    "G_LOW" = "G_low_activity_1",
+                                    "G_LOW" = "G_low_activity_2",
+                                    "G_LOW" = "G_low_activity_3",
+                                    "L_HKE" = "L_3",
+                                    "L_HKE" = "L_2",
+                                    "M_HKE" = "M_1",
+                                    "M_LOW" = "M_low_activity_1")) %>%
     group_by(year,fleet,metier_isis) %>%
     summarise(sim = sum(value)) %>%
     ungroup() %>%
@@ -1293,6 +1307,20 @@ prep_land_bymetier_byfleet_byseason <- function(sim_data,obs_data_path,fleet_gro
                                  word(metier,1,sep="-"),
                                  word(metier,1,sep="_Z"))) %>%
     mutate(metier_isis = word(metier_isis,1,sep="-")) %>%
+    mutate(metier_isis = fct_recode(metier_isis,### recoding metier name for correspondance with oserved data
+                                    "O_HKE" = "O_NS_DEF",
+                                    "O_HKE" = "O_NS_CEP",
+                                    "O_NEP" = "O_5",
+                                    "G_SOL" = "G_MNZ",
+                                    "G_HKE" = "G_MIX",
+                                    "G_HKE" = "G_1",
+                                    "G_LOW" = "G_low_activity_1",
+                                    "G_LOW" = "G_low_activity_2",
+                                    "G_LOW" = "G_low_activity_3",
+                                    "L_HKE" = "L_3",
+                                    "L_HKE" = "L_2",
+                                    "M_HKE" = "M_1",
+                                    "M_LOW" = "M_low_activity_1")) %>%
     group_by(year,season,fleet,metier_isis) %>%
     summarise(sim = sum(value)) %>%
     ungroup() %>%
@@ -1349,6 +1377,20 @@ prep_land_bymetier_byseason <- function(sim_data,species,years,obs_data_path,exp
                                  word(metier,1,sep="-"),
                                  word(metier,1,sep="_Z"))) %>%
     mutate(metier_isis = word(metier_isis,1,sep="-")) %>%
+    mutate(metier_isis = fct_recode(metier_isis, ### recoding metier name for correspondance with oserved data
+                                    "O_HKE" = "O_NS_DEF",
+                                    "O_HKE" = "O_NS_CEP",
+                                    "O_NEP" = "O_5",
+                                    "G_SOL" = "G_MNZ",
+                                    "G_HKE" = "G_MIX",
+                                    "G_HKE" = "G_1",
+                                    "G_LOW" = "G_low_activity_1",
+                                    "G_LOW" = "G_low_activity_2",
+                                    "G_LOW" = "G_low_activity_3",
+                                    "L_HKE" = "L_3",
+                                    "L_HKE" = "L_2",
+                                    "M_HKE" = "M_1",
+                                    "M_LOW" = "M_low_activity_1")) %>%
     group_by(year,season,metier_isis) %>%
     summarise(sim = sum(sim)) %>%
     ungroup() %>%
@@ -1406,6 +1448,20 @@ prep_land_bymetier_byyear <- function(sim_data,species,years,obs_data_path,expor
                                  word(metier,1,sep="-"),
                                  word(metier,1,sep="_Z"))) %>%
     mutate(metier_isis = word(metier_isis,1,sep="-")) %>%
+    mutate(metier_isis = fct_recode(metier_isis,### recoding metier name for correspondance with oserved data
+                                    "O_HKE" = "O_NS_DEF",
+                                    "O_HKE" = "O_NS_CEP",
+                                    "O_NEP" = "O_5",
+                                    "G_SOL" = "G_MNZ",
+                                    "G_HKE" = "G_MIX",
+                                    "G_HKE" = "G_1",
+                                    "G_LOW" = "G_low_activity_1",
+                                    "G_LOW" = "G_low_activity_2",
+                                    "G_LOW" = "G_low_activity_3",
+                                    "L_HKE" = "L_3",
+                                    "L_HKE" = "L_2",
+                                    "M_HKE" = "M_1",
+                                    "M_LOW" = "M_low_activity_1")) %>%
     group_by(year,metier_isis) %>%
     summarise(sim = sum(sim)) %>%
     ungroup() %>%
@@ -5667,7 +5723,15 @@ export_newTF <- function(TFcorrections,previousTF_path,exportedTF_path){
       
     for(j in seq(nrow(files))){
       # get the good correction
-      this_corr <- Corr %>% filter(Species == Spp_list[i] & metier_isis == files$metier[j])
+      this_metier <- case_when(files$metier[j] %in% c("O_NS_DEF","O_NS_CEP") ~ "O_HKE",
+                               files$metier[j] %in% c("G_MIX","G_1") ~ "G_HKE",
+                               files$metier[j] == "G_low_activity_1" ~ "G_LOW",
+                               files$metier[j] == "L_3" ~ "L_HKE",
+                               files$metier[j] == "M_1" ~ "M_HKE",
+                               files$metier[j] == "M_low_activity_1" ~ "M_LOW",
+                               files$metier[j] == "O_5" ~ "O_NEP",
+                               TRUE ~ files$metier[j])
+      this_corr <- Corr %>% filter(Species == Spp_list[i] & metier_isis == this_metier)
       # read the file
       lines <- readLines(paste0(import_path,"/",files$file[j])) %>% strsplit(split=';')
       lines <- data.table(old_lines = lines[[1]])
