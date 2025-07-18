@@ -60,6 +60,7 @@ library(scales)
 library(RColorBrewer)
 library(stringr)
 library(readr)
+library(forcats)
 
 library(parallel)
 library(doParallel, include.only = c("registerDoParallel"))
@@ -128,7 +129,7 @@ exportedTF_path <- paste0(here(),"/TargetFactors/mod_2b")
 Wether or not exporting seasonnal accessibility corrections (analysis by season), and in that case, the path to previous accessibility directory as well as the path to exported accessibility files:
 
 ```{r}
-export_corrections_q <- T
+export_corrections_q <- F
 previous_q_path <- paste0(here(),"/accessibility_values/q1_LHS_outputs")
 exported_q_path <- paste0(here(),"/accessibility_values/q2_season_step2a")
 ```
@@ -136,7 +137,7 @@ exported_q_path <- paste0(here(),"/accessibility_values/q2_season_step2a")
 The first time, import data by transforming the raw simulated data into .rds. Once imported, no need to do it again, work only with .rds.
 
 ```{r,message=FALSE,warning=FALSE}
-import_simulations <- T
+import_simulations <- F
 if(import_simulations){
   
     for(i in seq(length(Species))){
@@ -305,7 +306,7 @@ Solea_data_catch_total_byyear <- prep_total_catch_byyear(sim_data = Solea_sim_by
                                                          years = years,
                                                          obs_data_path = obs_data_path,
                                                          export = F,
-                                                         export_path = comp_path)
+                                                         export_path = NULL)
 ```
 
 Plotting:
@@ -334,7 +335,7 @@ Solea_data_catch_groupisis_byyear <- prep_catch_groupisis_byyear(sim_data = Sole
                                                                  years = years,
                                                                  obs_data_path = obs_data_path,
                                                                  export = F,
-                                                                 export_path = comp_path)
+                                                                 export_path = NULL)
 ```
 
 Plotting:
@@ -362,7 +363,7 @@ Solea_data_land_byseason  <- prep_land_byseason(sim_data = Solea_sim_byseason,
                                                 years = years,
                                                 obs_data_path = obs_data_path,
                                                 export = F,
-                                                export_path = comp_path)
+                                                export_path = NULL)
 ```
 
 Plotting:
@@ -394,7 +395,7 @@ Solea_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Solea_
                                                                years = years,
                                                                obs_data_path = obs_data_path,
                                                                export = F,
-                                                               export_path = comp_path)
+                                                               export_path = NULL)
 ```
 
 Plotting:
@@ -418,7 +419,7 @@ Solea_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Solea_si
                                                              years = years,
                                                              obs_data_path = obs_data_path,
                                                              export = F,
-                                                             export_path = comp_path)
+                                                             export_path = NULL)
 ```
 
 View the respective importance of each metier:
@@ -470,7 +471,7 @@ Solea_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = Sol
                                                                   years = years,
                                                                   obs_data_path = obs_data_path,
                                                                   export = F,
-                                                                  export_path = comp_path)
+                                                                  export_path = NULL)
 ```
 
 Plotting:
@@ -502,7 +503,7 @@ Solea_data_N_total <- prep_total_N(sim_data = Solea_sim_N,
                                    years = years,
                                    obs_data_path = obs_data_path,
                                    export = F,
-                                   export_path = comp_path)
+                                   export_path = NULL)
 
 ```
 
@@ -527,7 +528,7 @@ Solea_data_N_agegroup <- prep_N_agegroup(sim_data = Solea_sim_N,
                                          years = years,
                                          obs_data_path = obs_data_path,
                                          export = F,
-                                         export_path = comp_path)
+                                         export_path = NULL)
 
 ```
 
@@ -556,7 +557,7 @@ Solea_data_ssb <- prep_SSB(sim_data = Solea_sim_SSB,
                            years = years,
                            obs_data_path = obs_data_path,
                            export = F,
-                           export_path = comp_path)  
+                           export_path = NULL)  
 ```
 
 Plotting:
@@ -586,7 +587,7 @@ Solea_data_F_agegroup <- prep_F_agegroup(sim_data = Solea_sim_F,
                                          years = years,
                                          obs_data_path = obs_data_path,
                                          export = F,
-                                         export_path = comp_path)
+                                         export_path = NULL)
 
 ```
 
@@ -647,7 +648,7 @@ LepiWhi_data_catch_total_byyear <- prep_total_catch_byyear(sim_data = LepiWhi_si
                                                            years = years,
                                                            obs_data_path = obs_data_path,
                                                            export = F,
-                                                           export_path = comp_path)
+                                                           export_path = NULL)
 ```
 
 Plotting:
@@ -676,7 +677,7 @@ LepiWhi_data_catch_groupisis_byyear <- prep_catch_groupisis_byyear(sim_data = Le
                                                                    years = years,
                                                                    obs_data_path = obs_data_path,
                                                                    export = F,
-                                                                   export_path = comp_path)
+                                                                   export_path = NULL)
 ```
 
 Plotting:
@@ -704,7 +705,7 @@ LepiWhi_data_land_byseason  <- prep_land_byseason(sim_data = LepiWhi_sim_byseaso
                                                   years = years,
                                                   obs_data_path = obs_data_path,
                                                   export = F,
-                                                  export_path = comp_path)
+                                                  export_path = NULL)
 ```
 
 Plotting:
@@ -734,7 +735,7 @@ LepiWhi_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Lepi
                                                                years = years,
                                                                obs_data_path = obs_data_path,
                                                                export = F,
-                                                               export_path = comp_path)
+                                                               export_path = NULL)
 ```
 
 Plotting:
@@ -758,7 +759,7 @@ LepiWhi_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = LepiWh
                                                                years = years,
                                                                obs_data_path = obs_data_path,
                                                                export = F,
-                                                               export_path = comp_path)
+                                                               export_path = NULL)
 ```
 
 View the respective importance of each metier:
@@ -810,7 +811,7 @@ LepiWhi_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = L
                                                                    years = years,
                                                                    obs_data_path = obs_data_path,
                                                                    export = F,
-                                                                   export_path = comp_path)
+                                                                   export_path = NULL)
 ```
 
 Plotting:
@@ -842,7 +843,7 @@ LepiWhi_data_N_total <- prep_total_N(sim_data = LepiWhi_sim_N,
                                    years = years,
                                    obs_data_path = obs_data_path,
                                    export = F,
-                                   export_path = comp_path)
+                                   export_path = NULL)
 
 ```
 
@@ -867,7 +868,7 @@ LepiWhi_data_N_agegroup <- prep_N_agegroup(sim_data = LepiWhi_sim_N,
                                          years = years,
                                          obs_data_path = obs_data_path,
                                          export = F,
-                                         export_path = comp_path)
+                                         export_path = NULL)
 
 ```
 
@@ -896,7 +897,7 @@ LepiWhi_data_ssb <- prep_SSB(sim_data = LepiWhi_sim_SSB,
                            years = years,
                            obs_data_path = obs_data_path,
                            export = F,
-                           export_path = comp_path)  
+                           export_path = NULL)  
 ```
 
 Plotting:
@@ -926,7 +927,7 @@ LepiWhi_data_F_agegroup <- prep_F_agegroup(sim_data = LepiWhi_sim_F,
                                          years = years,
                                          obs_data_path = obs_data_path,
                                          export = F,
-                                         export_path = comp_path)
+                                         export_path = NULL)
 
 ```
 
@@ -986,7 +987,7 @@ Lophius_data_catch_total_byyear <- prep_total_catch_byyear(sim_data = Lophius_si
                                                            years = years,
                                                            obs_data_path = obs_data_path,
                                                            export = F,
-                                                           export_path = comp_path)
+                                                           export_path = NULL)
 ```
 
 Plotting:
@@ -1015,7 +1016,7 @@ Lophius_data_catch_groupisis_byyear <- prep_catch_groupisis_byyear(sim_data = Lo
                                                                    years = years,
                                                                    obs_data_path = obs_data_path,
                                                                    export = F,
-                                                                   export_path = comp_path)
+                                                                   export_path = NULL)
 ```
 
 Plotting:
@@ -1043,7 +1044,7 @@ Lophius_data_land_byseason  <- prep_land_byseason(sim_data = Lophius_sim_byseaso
                                                 years = years,
                                                 obs_data_path = obs_data_path,
                                                 export = F,
-                                                export_path = comp_path)
+                                                export_path = NULL)
 ```
 
 Plotting:
@@ -1073,7 +1074,7 @@ Lophius_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Loph
                                                                  years = years,
                                                                  obs_data_path = obs_data_path,
                                                                  export = F,
-                                                                 export_path = comp_path)
+                                                                 export_path = NULL)
 ```
 
 Plotting:
@@ -1097,7 +1098,7 @@ Lophius_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Lophiu
                                                              years = years,
                                                              obs_data_path = obs_data_path,
                                                              export = F,
-                                                             export_path = comp_path)
+                                                             export_path = NULL)
 ```
 
 View the respective importance of each metier:
@@ -1149,7 +1150,7 @@ Lophius_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = L
                                                                    years = years,
                                                                    obs_data_path = obs_data_path,
                                                                    export = F,
-                                                                   export_path = comp_path)
+                                                                   export_path = NULL)
 ```
 
 Plotting:
@@ -1181,7 +1182,7 @@ Lophius_data_N_total <- prep_total_N(sim_data = Lophius_sim_N,
                                    years = years,
                                    obs_data_path = obs_data_path,
                                    export = F,
-                                   export_path = comp_path)
+                                   export_path = NULL)
 
 ```
 
@@ -1206,7 +1207,7 @@ Lophius_data_N_agegroup <- prep_N_agegroup(sim_data = Lophius_sim_N,
                                          years = years,
                                          obs_data_path = obs_data_path,
                                          export = F,
-                                         export_path = comp_path)
+                                         export_path = NULL)
 
 ```
 
@@ -1235,7 +1236,7 @@ Lophius_data_ssb <- prep_SSB(sim_data = Lophius_sim_SSB,
                            years = years,
                            obs_data_path = obs_data_path,
                            export = F,
-                           export_path = comp_path)  
+                           export_path = NULL)  
 ```
 
 Plotting:
@@ -1265,7 +1266,7 @@ Lophius_data_F_agegroup <- prep_F_agegroup(sim_data = Lophius_sim_F,
                                          years = years,
                                          obs_data_path = obs_data_path,
                                          export = F,
-                                         export_path = comp_path)
+                                         export_path = NULL)
 
 ```
 
@@ -1325,7 +1326,7 @@ Merluccius_data_catch_total_byyear <- prep_total_catch_byyear(sim_data = Merlucc
                                                               years = years,
                                                               obs_data_path = obs_data_path,
                                                               export = F,
-                                                              export_path = comp_path)
+                                                              export_path = NULL)
 ```
 
 Plotting:
@@ -1355,7 +1356,7 @@ Merluccius_data_catch_agegroup_byyear <- prep_catch_agegroup_byyear(sim_data = M
                                                                     obs_data_path = obs_data_path,
                                                                     corresp_path = AgeLength_tables_path,
                                                                     export = F,
-                                                                    export_path = comp_path)
+                                                                    export_path = NULL)
 ```
 
 Plotting:
@@ -1379,7 +1380,7 @@ Merluccius_data_land_byseason  <- prep_land_byseason(sim_data = Merluccius_sim_b
                                                      years = years,
                                                      obs_data_path = obs_data_path,
                                                      export = F,
-                                                     export_path = comp_path)
+                                                     export_path = NULL)
 ```
 
 Plotting:
@@ -1409,7 +1410,7 @@ Merluccius_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = M
                                                                     years = years,
                                                                     obs_data_path = obs_data_path,
                                                                     export = F,
-                                                                    export_path = comp_path)
+                                                                    export_path = NULL)
 ```
 
 Plotting:
@@ -1433,7 +1434,7 @@ Merluccius_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Mer
                                                              years = years,
                                                              obs_data_path = obs_data_path,
                                                              export = F,
-                                                             export_path = comp_path)
+                                                             export_path = NULL)
 ```
 
 View the respective importance of each metier:
@@ -1485,7 +1486,7 @@ Merluccius_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data 
                                                                        years = years,
                                                                        obs_data_path = obs_data_path,
                                                                        export = F,
-                                                                       export_path = comp_path)
+                                                                       export_path = NULL)
 ```
 
 Plotting:
@@ -1517,7 +1518,7 @@ Merluccius_data_N_total <- prep_total_N(sim_data = Merluccius_sim_N,
                                    years = years,
                                    obs_data_path = obs_data_path,
                                    export = F,
-                                   export_path = comp_path)
+                                   export_path = NULL)
 
 ```
 
@@ -1542,7 +1543,7 @@ Merluccius_data_N_agegroup <- prep_N_agegroup(sim_data = Merluccius_sim_N,
                                          years = years,
                                          obs_data_path = obs_data_path,
                                          export = F,
-                                         export_path = comp_path)
+                                         export_path = NULL)
 
 ```
 
@@ -1571,7 +1572,7 @@ Merluccius_data_ssb <- prep_SSB(sim_data = Merluccius_sim_SSB,
                            years = years,
                            obs_data_path = obs_data_path,
                            export = F,
-                           export_path = comp_path)  
+                           export_path = NULL)  
 ```
 
 Plotting:
@@ -1624,7 +1625,7 @@ Nephrops_data_catch_total_byyear <- prep_total_catchN_byyear(sim_data = Nephrops
                                                              years = years,
                                                              obs_data_path = obs_data_path,
                                                              export = F,
-                                                             export_path = comp_path)
+                                                             export_path = NULL)
 ```
 
 Plotting:
@@ -1654,7 +1655,7 @@ Nephrops_data_catchN_agegroup_byyear <- prep_catchN_agegroup_byyear(sim_data = N
                                                                     obs_data_path = obs_data_path,
                                                                     corresp_path = AgeLength_tables_path,
                                                                     export = F,
-                                                                    export_path = comp_path)
+                                                                    export_path = NULL)
 ```
 
 Plotting:
@@ -1681,7 +1682,7 @@ Nephrops_data_land_byseason  <- prep_land_byseason(sim_data = Nephrops_sim_bysea
                                                    years = years,
                                                    obs_data_path = obs_data_path,
                                                    export = F,
-                                                   export_path = comp_path)
+                                                   export_path = NULL)
 ```
 
 Plotting:
@@ -1711,7 +1712,7 @@ Nephrops_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Nep
                                                                   years = years,
                                                                   obs_data_path = obs_data_path,
                                                                   export = F,
-                                                                  export_path = comp_path)
+                                                                  export_path = NULL)
 ```
 
 Plotting:
@@ -1731,7 +1732,7 @@ Nephrops_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Nephr
                                                              years = years,
                                                              obs_data_path = obs_data_path,
                                                              export = F,
-                                                             export_path = comp_path)
+                                                             export_path = NULL)
 ```
 
 View the respective importance of each metier:
@@ -1783,7 +1784,7 @@ Nephrops_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = 
                                                                      years = years,
                                                                      obs_data_path = obs_data_path,
                                                                      export = F,
-                                                                     export_path = comp_path)
+                                                                     export_path = NULL)
 ```
 
 Plotting:
@@ -1846,7 +1847,7 @@ Raja_data_catch_total_byyear <- prep_total_land_byyear(sim_data = Raja_sim_byyea
                                                        years = years,
                                                        obs_data_path = obs_data_path,
                                                        export = F,
-                                                       export_path = comp_path)
+                                                       export_path = NULL)
 ```
 
 Plotting:
@@ -1875,7 +1876,7 @@ Raja_data_land_byseason  <- prep_land_byseason(sim_data = Raja_sim_byseason,
                                                years = years,
                                                obs_data_path = obs_data_path,
                                                export = F,
-                                               export_path = comp_path)
+                                               export_path = NULL)
 ```
 
 Plotting:
@@ -1905,7 +1906,7 @@ Raja_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Raja_si
                                                               years = years,
                                                               obs_data_path = obs_data_path,
                                                               export = F,
-                                                              export_path = comp_path)
+                                                              export_path = NULL)
 ```
 
 Plotting:
@@ -1929,7 +1930,7 @@ Raja_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Raja_sim_
                                                             years = years,
                                                             obs_data_path = obs_data_path,
                                                             export = F,
-                                                            export_path = comp_path)
+                                                            export_path = NULL)
 ```
 
 View the respective importance of each metier:
@@ -1981,7 +1982,7 @@ Raja_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data = Raja
                                                                  years = years,
                                                                  obs_data_path = obs_data_path,
                                                                  export = F,
-                                                                 export_path = comp_path)
+                                                                 export_path = NULL)
 ```
 
 Plotting:
@@ -2013,7 +2014,7 @@ Raja_data_N_total <- prep_total_N(sim_data = Raja_sim_N,
                                   years = years,
                                   obs_data_path = obs_data_path,
                                   export = F,
-                                  export_path = comp_path)
+                                  export_path = NULL)
 
 ```
 
@@ -2038,7 +2039,7 @@ Raja_data_ssb <- prep_SSB(sim_data = Raja_sim_SSB,
                           years = years,
                           obs_data_path = obs_data_path,
                           export = F,
-                          export_path = comp_path)  
+                          export_path = NULL)  
 ```
 
 Plotting:
@@ -2068,7 +2069,7 @@ Raja_data_F_agegroup <- prep_F_agegroup(sim_data = Raja_sim_F,
                                         years = years,
                                         obs_data_path = obs_data_path,
                                         export = F,
-                                        export_path = comp_path)
+                                        export_path = NULL)
 
 ```
 
@@ -2128,7 +2129,7 @@ Leucoraja_data_catch_total_byyear <- prep_total_land_byyear(sim_data = Leucoraja
                                                             years = years,
                                                             obs_data_path = obs_data_path,
                                                             export = F,
-                                                            export_path = comp_path)
+                                                            export_path = NULL)
 ```
 
 Plotting:
@@ -2157,7 +2158,7 @@ Leucoraja_data_land_byseason  <- prep_land_byseason(sim_data = Leucoraja_sim_bys
                                                     years = years,
                                                     obs_data_path = obs_data_path,
                                                     export = F,
-                                                    export_path = comp_path)
+                                                    export_path = NULL)
 ```
 
 Plotting:
@@ -2187,7 +2188,7 @@ Leucoraja_data_land_bycountry_byyear <- prep_land_bycountry_byyear(sim_data = Le
                                                                    years = years,
                                                                    obs_data_path = obs_data_path,
                                                                    export = F,
-                                                                   export_path = comp_path)
+                                                                   export_path = NULL)
 ```
 
 Plotting:
@@ -2211,7 +2212,7 @@ Leucoraja_data_land_bymetier_byyear <- prep_land_bymetier_byyear(sim_data = Leuc
                                                              years = years,
                                                              obs_data_path = obs_data_path,
                                                              export = F,
-                                                             export_path = comp_path)
+                                                             export_path = NULL)
 ```
 
 View the respective importance of each metier:
@@ -2263,7 +2264,7 @@ Leucoraja_data_land_bymetier_byseason  <- prep_land_bymetier_byseason(sim_data =
                                                                       years = years,
                                                                       obs_data_path = obs_data_path,
                                                                       export = F,
-                                                                      export_path = comp_path)
+                                                                      export_path = NULL)
 ```
 
 Plotting:
@@ -2295,7 +2296,7 @@ Leucoraja_data_N_total <- prep_total_N(sim_data = Leucoraja_sim_N,
                                    years = years,
                                    obs_data_path = obs_data_path,
                                    export = F,
-                                   export_path = comp_path)
+                                   export_path = NULL)
 
 ```
 
@@ -2320,7 +2321,7 @@ Leucoraja_data_ssb <- prep_SSB(sim_data = Leucoraja_sim_SSB,
                            years = years,
                            obs_data_path = obs_data_path,
                            export = F,
-                           export_path = comp_path)  
+                           export_path = NULL)  
 ```
 
 Plotting:
@@ -2350,7 +2351,7 @@ Leucoraja_data_F_agegroup <- prep_F_agegroup(sim_data = Leucoraja_sim_F,
                                          years = years,
                                          obs_data_path = obs_data_path,
                                          export = F,
-                                         export_path = comp_path)
+                                         export_path = NULL)
 
 ```
 
@@ -2377,7 +2378,7 @@ if(export_corrections_TF){
                          Merluccius_ratio_land_bymetier_byyear,
                          Nephrops_ratio_land_bymetier_byyear,
                          Raja_ratio_land_bymetier_byyear,
-                         Leucoraja_ratio_land_bymetier_byyear) 
+                         Leucoraja_ratio_land_bymetier_byyear)
   export_newTF(TFcorrections,previousTF_path,exportedTF_path) 
 }
 ```
@@ -2409,4 +2410,9 @@ for(i in seq(length(Species))){
   }
 }
 
+```
+
+
+```{r,echo=F}
+print(paste("end: ",Sys.time()))
 ```

@@ -60,6 +60,7 @@ library(scales)
 library(RColorBrewer)
 library(stringr)
 library(readr)
+library(forcats)
 
 library(parallel)
 library(doParallel, include.only = c("registerDoParallel")) # pour éviter d’écraser `makeCluster`
