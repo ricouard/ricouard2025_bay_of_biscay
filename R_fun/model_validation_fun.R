@@ -5725,8 +5725,9 @@ export_newTF <- function(TFcorrections,previousTF_path,exportedTF_path){
       # get the good correction
       this_metier <- case_when(files$metier[j] %in% c("O_NS_DEF","O_NS_CEP") ~ "O_HKE",
                                files$metier[j] %in% c("G_MIX","G_1") ~ "G_HKE",
-                               files$metier[j] == "G_low_activity_1" ~ "G_LOW",
-                               files$metier[j] == "L_3" ~ "L_HKE",
+                               files$metier[j] %in% c("G_low_activity_1","G_low_activity_2","G_low_activity_3") ~ "G_LOW",
+                               files$metier[j] == "G_MNZ" ~ "G_SOL",
+                               files$metier[j] %in% c("L2","L_3") ~ "L_HKE",
                                files$metier[j] == "M_1" ~ "M_HKE",
                                files$metier[j] == "M_low_activity_1" ~ "M_LOW",
                                files$metier[j] == "O_5" ~ "O_NEP",
