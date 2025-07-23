@@ -85,10 +85,10 @@ obs_data_path <- paste0(here(),"/reference_data")
 
 Then, the path to the simulation repositories (with simulation raw data):
 ```{r}
-sim_2015_path <- paste0(here(),"/Sim_data/raw/step2a_TF0q2/sim_calib_mod2a_2015_2025-07-17-00-40")
-sim_2016_path <- paste0(here(),"/Sim_data/raw/step2a_TF0q2/sim_calib_mod2a_2016_2025-07-17-00-43")
-sim_2017_path <- paste0(here(),"/Sim_data/raw/step2a_TF0q2/sim_calib_mod2a_2017_2025-07-17-00-46")
-sim_2018_path <- paste0(here(),"/Sim_data/raw/step2a_TF0q2/sim_calib_mod2a_2018_2025-07-17-00-49")
+sim_2015_path <- paste0(here(),"/Sim_data/raw/step2a_TF0q2/sim_calib_mod2a_2015_2025-07-23-12-27")
+sim_2016_path <- paste0(here(),"/Sim_data/raw/step2a_TF0q2/sim_calib_mod2a_2016_2025-07-23-12-29")
+sim_2017_path <- paste0(here(),"/Sim_data/raw/step2a_TF0q2/sim_calib_mod2a_2017_2025-07-23-12-32")
+sim_2018_path <- paste0(here(),"/Sim_data/raw/step2a_TF0q2/sim_calib_mod2a_2018_2025-07-23-12-35")
 ```
 
 The path to tidy simulation data:
