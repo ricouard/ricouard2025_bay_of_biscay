@@ -14,7 +14,7 @@ print(paste("start: ",Sys.time()))
 This document contains the code along with the results of the skill assessment of step 2b model. Simulations are run one year by one year, starting in 2015, 2016, 2017 and 2018, with forced recruitment. This script is also part of the calibration process given that it computes coefficients to perform seasonalisation of accessibility.   
 
 
-This document is divided into three sections (each one in a different tab). The reader mainly interested by the results will find them in the second ection "Analysis by species". 
+This document is divided into three sections (each one in a different tab). The reader mainly interested by the results will find them in the second section "Analysis by species". 
 
 In "Analysis by species" section, he will find a tab by species and for each species, a tab by variable. These metrics are :
 
@@ -84,10 +84,10 @@ obs_data_path <- paste0(here(),"/reference_data")
 
 Then, the path to the simulation repositories (with simulation raw data):
 ```{r}
-sim_2015_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2015_2025-07-18-22-21")
-sim_2016_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2016_2025-07-18-22-23")
-sim_2017_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2017_2025-07-18-22-26")
-sim_2018_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2018_2025-07-18-22-29")
+sim_2015_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2015_2025-07-23-12-44")
+sim_2016_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2016_2025-07-23-12-47")
+sim_2017_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2017_2025-07-23-12-49")
+sim_2018_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2018_2025-07-23-12-52")
 
 ```
 
@@ -121,13 +121,13 @@ Species <- c("Solea_solea",
 Wether or not exporting seasonnal accessibility corrections (analysis by season), and  in that case, the path to previous accessibility file as well as the path to exported accessibility file:
 ```{r}
 export_corrections_q <- T
-previous_q_path <- paste0(here(),"/accessibility_values/q1_LHS_ouputs")
+previous_q_path <- paste0(here(),"/accessibility_values/q1_LHS_outputs")
 exported_q_path <- paste0(here(),"/accessibility_values/q2_season_step3b")
 ```
 
 The first time, import data by transforming the raw simulated data into .rds. Once imported, no need to do it again, work only with .rds.
 ```{r,message=FALSE,warning=FALSE}
-import_simulations <- F
+import_simulations <- T
 if(import_simulations){
   
     for(i in seq(length(Species))){
