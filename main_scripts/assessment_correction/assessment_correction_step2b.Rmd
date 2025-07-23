@@ -84,10 +84,10 @@ obs_data_path <- paste0(here(),"/reference_data")
 
 Then, the path to the simulation repositories (with simulation raw data):
 ```{r}
-sim_2015_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/")
-sim_2016_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/")
-sim_2017_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/")
-sim_2018_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/")
+sim_2015_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2015_2025-07-18-22-21")
+sim_2016_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2016_2025-07-18-22-23")
+sim_2017_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2017_2025-07-18-22-26")
+sim_2018_path <- paste0(here(),"/Sim_data/raw/step2b_TF1q1/sim_calib_mod2b_2018_2025-07-18-22-29")
 
 ```
 
@@ -127,7 +127,7 @@ exported_q_path <- paste0(here(),"/accessibility_values/q2_season_step3b")
 
 The first time, import data by transforming the raw simulated data into .rds. Once imported, no need to do it again, work only with .rds.
 ```{r,message=FALSE,warning=FALSE}
-import_simulations <- T
+import_simulations <- F
 if(import_simulations){
   
     for(i in seq(length(Species))){
