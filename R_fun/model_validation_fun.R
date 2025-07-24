@@ -425,15 +425,15 @@ data_concatenation <- function(mod_list,run_list,qty_list,species_list,path){
       
         this_spp <- species_list[s]
         spp_short <- case_when(this_spp == "Merluccius_merluccius" ~ c("Merluccius","hake"),
-                               this_spp == "Leucoraja_naevus" ~ c("Leucoraja","Leucoraja"),
+                               this_spp == "Leucoraja_naevus" ~ c("leucoraja","Leucoraja"),
                                this_spp == "Lepidorhombus_whiffiagonis" ~ c("megrim","Lepidorhombus"),
                                this_spp == "Lophius_piscatorius" ~ c("Lophius","monkfish"),
                                this_spp == "Nephrops_norvegicus" ~ c("nephrops","Nephrops"),
-                               this_spp == "Raja_clavata" ~ c("Raja","Raja"),
+                               this_spp == "Raja_clavata" ~ c("raja","Raja"),
                                this_spp == "Solea_solea" ~ c("sole","Solea"))
         
           this_file <- data.frame(name=list.files(this_path)) %>%
-            filter(grepl(spp_short[1],name)|grepl(spp_short[2],name)) %>%
+            filter(grepl(paste0("_",spp_short[1]),name)|grepl(paste0("_",spp_short[2]),name)) %>%
             mutate(name = paste0(this_path,"/",name))
           
           if(length(this_file$name)!=0){
@@ -812,6 +812,7 @@ skills_summary <- function(mod_list,run_list,qty_list,path,by_fleet=F,by_period=
     }
     
     Data <- rbind(Data,this_data)
+   print(m)
   }
   
   return(Data)
