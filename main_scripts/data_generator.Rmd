@@ -4220,6 +4220,7 @@ Fleet data for french vessels larger than 12m:
 ```{r}
 this_group <- 'sup12'
 fleet_data <- land_fleet_ctry_met_seas %>% 
+  filter(fleet_group == this_group) %>%
   merge(prop_pisc) %>%
   mutate(Landings_kg = if_else(species=='MNZ',Landings_kg * prop, Landings_kg)) 
 fleets <- fleet_data %>% select(fleet_isis) %>% distinct() 
