@@ -575,8 +575,7 @@ fleet_weight <- function(fleet_group_list,path,years=2015:2018,rm_fleets=NULL){
                                           fleet_isis == 'Fileyeurs Métiers de l hameçon exclusifs-10-12' ~ 'nets and hooks 10-12',
                                           fleet_isis == 'Fileyeurs exclusifs-0-10' ~ 'gillnet 0-10',
                                           fleet_isis == 'Fileyeurs exclusifs-10-12' ~ 'gillnet 10-12',
-                                          fleet_isis == 'Flottilles agrégées-0-10' ~ 'aggregated fleets 0-10',
-                                          fleet_isis == 'Flottilles agrégées-10-12' ~ 'aggregated fleets 10-12',
+                                          fleet_isis == 'Flottilles agrÃ©gÃ©es-10-12' ~ 'aggregated fleets 10-12',
                                           fleet_isis == 'Palangriers exclusifs-0-10' ~ 'longline 0-10',
                                           fleet_isis == 'Palangriers exclusifs-10-12' ~ 'longline 10-12'))) %>%
              mutate(fleet_isis = if_else(fleet_group != "FR >12",
@@ -812,7 +811,7 @@ skills_summary <- function(mod_list,run_list,qty_list,path,by_fleet=F,by_period=
     }
     
     Data <- rbind(Data,this_data)
-   print(m)
+   
   }
   
   return(Data)
@@ -1546,6 +1545,12 @@ prep_land_byspecies_byfleet_byseason <- function(sim_data,obs_data_path,fleet_gr
                                       fleet_isis == 'Flottilles agrégées-10-12' ~ 'aggregated fleets 10-12',
                                       fleet_isis == 'Palangriers exclusifs-0-10' ~ 'longline 0-10',
                                       fleet_isis == 'Palangriers exclusifs-10-12' ~ 'longline 10-12')) 
+    }else if(fleet_group=="sup12"){
+      NewDat <- NewDat  %>%
+        mutate(fleet_isis = str_replace(fleet_isis,'bob_north-','North ')) %>%
+        mutate(fleet_isis = str_replace(fleet_isis,'bob_south-','South ')) %>%
+        mutate(fleet_isis = str_replace(fleet_isis,'@ ','')) %>%
+        mutate(fleet_isis = str_replace(fleet_isis,'_',' and '))
     }
     
     Obs <- rbind(Obs,NewDat)
@@ -1605,6 +1610,12 @@ prep_land_byspecies_byfleet_byyear <- function(sim_data,obs_data_path,fleet_grou
                                       fleet_isis == 'Flottilles agrégées-10-12' ~ 'aggregated fleets 10-12',
                                       fleet_isis == 'Palangriers exclusifs-0-10' ~ 'longline 0-10',
                                       fleet_isis == 'Palangriers exclusifs-10-12' ~ 'longline 10-12')) 
+    }else if(fleet_group=="sup12"){
+      NewDat <- NewDat  %>%
+        mutate(fleet_isis = str_replace(fleet_isis,'bob_north-','North ')) %>%
+        mutate(fleet_isis = str_replace(fleet_isis,'bob_south-','South ')) %>%
+        mutate(fleet_isis = str_replace(fleet_isis,'@ ','')) %>%
+        mutate(fleet_isis = str_replace(fleet_isis,'_',' and '))
     }
     
     Obs <- rbind(Obs,NewDat)
