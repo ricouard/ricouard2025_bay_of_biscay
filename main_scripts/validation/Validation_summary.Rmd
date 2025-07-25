@@ -59,6 +59,7 @@ obs_data_path <- paste0(here(),"/reference_data")
 And the path to save figures:
 ```{r}
 save_heatmaps_path <- paste0(here(),"/saved_plots/heatmaps")
+save_radar_path <- paste0(here(),"/saved_plots/radar")
 ```
 We also specify the time period on which the model is validated:
 ```{r}
@@ -389,6 +390,9 @@ for(m in seq(length(mod))){
                                    high_var = qty_obs)
   print(this_mod)
   print(plot)
+  save_last_radar(name = paste0("spp_w1_",this_mod),
+                  path = save_radar_path,
+                  by_fleet = F)
   
   plot <- plot_radar_synthesis_spp(data,
                                    w_ratio = 10,
@@ -396,6 +400,9 @@ for(m in seq(length(mod))){
                                    high_var = qty_obs)
   print(this_mod)
   print(plot)
+  save_last_radar(name = paste0("spp_w10_",this_mod),
+                  path = save_radar_path,
+                  by_fleet = F)
   
 }
 
@@ -628,7 +635,25 @@ for(m in seq(length(mod))){
                                      low_var = qty_mod, 
                                      high_var = qty_obs)
   print(this_mod)
-  print(plot)
+  
+  print(plot[[1]])
+  save_last_radar(name = paste0("flt_inf12_",this_mod),
+                  path = save_radar_path,
+                  by_fleet = T)
+  
+  print(plot[[3]])
+  save_last_radar(name = paste0("flt_foreign_",this_mod),
+                  path = save_radar_path,
+                  by_fleet = T)
+  print(plot[[4]])
+  save_last_radar(name = paste0("flt_grp_",this_mod),
+                  path = save_radar_path,
+                  by_fleet = T)
+  
+  print(plot[[9]])
+  save_last_radar(name = paste0("flt_sup12_",this_mod),
+                  path = save_radar_path,
+                  by_fleet = T)
   
 }
 
