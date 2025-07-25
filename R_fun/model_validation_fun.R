@@ -2474,17 +2474,7 @@ plot_heatmap <- function(data,metrics,by_fleet=F){
     Ytitle <- "Species"
   }
   year <- unique(data$year)
-  
-  # ices_qty <- c("Abundance/gp.",
-  #               "Catch(kg)/gp.",
-  #               "Catch(kg)(tot.)",
-  #               "Catch(N)/gp.",
-  #               "Catch(N)(tot.)",
-  #               "F/gp.",
-  #               "SSB",
-  #               "Abundance(tot.)",
-  #               "Land.(tot.)")
-  
+
   
   Data <- data %>% 
     mutate(qty = case_when(qty=="abundance_group" ~ 'Abundance/gp.',
@@ -2593,17 +2583,7 @@ plot_heatmap_imp <- function(data,metrics,from,to,by_fleet=F){
   }
   
   year <- unique(data$year)
-  
-  # ices_qty <- c("Abundance/gp.",
-  #               "Catch(kg)/gp.",
-  #               "Catch(kg)(tot.)",
-  #               "Catch(N)/gp.",
-  #               "Catch(N)(tot.)",
-  #               "F/gp.",
-  #               "SSB",
-  #               "Abundance(tot.)",
-  #               "Land.(tot.)")
-  # 
+ 
  
   Data <- data %>% 
     filter(mod==from|mod==to) %>%
@@ -2845,16 +2825,7 @@ plot_heatmap_imp_period_rec <- function(data,metrics,from,to,by_fleet=F){
   }else{
     Ytitle <- "Species"
   }
-  # ices_qty <- c("Abundance/gp.",
-  #               "Catch(kg)/gp.",
-  #               "Catch(kg)(tot.)",
-  #               "Catch(N)/gp.",
-  #               "Catch(N)(tot.)",
-  #               "F/gp.",
-  #               "SSB",
-  #               "Abundance(tot.)",
-  #               "Land.(tot.)")
-  # 
+
   Data <- data %>% 
     filter(mod==from|mod==to) %>%
     mutate(qty = case_when(qty=="abundance_group" ~ 'Abundance/gp.',
@@ -3302,16 +3273,7 @@ plot_heatmap_imp_thresh_period_rec <- function(data,metrics,from,to,thresh=c(-0.
   
   mod <- unique(data$mod)
   
-  # ices_qty <- c("Abundance/gp.",
-  #               "Catch(kg)/gp.",
-  #               "Catch(kg)(tot.)",
-  #               "Catch(N)/gp.",
-  #               "Catch(N)(tot.)",
-  #               "F/gp.",
-  #               "SSB",
-  #               "Abundance(tot.)",
-  #               "Land.(tot.)")
-  # 
+
   
   thresh_order <- c(paste("s <",thresh[1]),
                     paste(thresh[1],"< s <",thresh[2]),
@@ -3449,16 +3411,7 @@ plot_heatmap_period <- function(data,metrics,by_fleet=F){
   
   mod <- unique(data$mod)
   
-  # ices_qty <- c("Abundance/gp.",
-  #               "Catch(kg)/gp.",
-  #               "Catch(kg)(tot.)",
-  #               "Catch(N)/gp.",
-  #               "Catch(N)(tot.)",
-  #               "F/gp.",
-  #               "SSB",
-  #               "Abundance(tot.)",
-  #               "Land.(tot.)")
-  # 
+ 
  
   
   Data <- data %>%
@@ -3570,16 +3523,7 @@ plot_heatmap_period_rec <- function(data,metrics,by_fleet=F){
   
   mod <- unique(data$mod)
   
-  # ices_qty <- c("Abundance/gp.",
-  #               "Catch(kg)/gp.",
-  #               "Catch(kg)(tot.)",
-  #               "Catch(N)/gp.",
-  #               "Catch(N)(tot.)",
-  #               "F/gp.",
-  #               "SSB",
-  #               "Abundance(tot.)",
-  #               "Land.(tot.)")
-  # 
+
   Data <- data %>% 
     mutate(qty = case_when(qty=="abundance_group" ~ 'Abundance/gp.',
                            qty=="total_abundance" ~ 'Abundance(tot.)',
@@ -3990,16 +3934,7 @@ plot_heatmap_thresh_period_rec <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1
   
   mod <- unique(data$mod)
   
-  # ices_qty <- c("Abundance/gp.",
-  #               "Catch(kg)/gp.",
-  #               "Catch(kg)(tot.)",
-  #               "Catch(N)/gp.",
-  #               "Catch(N)(tot.)",
-  #               "F/gp.",
-  #               "SSB",
-  #               "Abundance(tot.)",
-  #               "Land.(tot.)")
-  # 
+ 
   
   thresh_order <- c(paste("s <",thresh[1]),
                     paste(thresh[1],"< s <",thresh[2]),
@@ -5405,8 +5340,7 @@ plot_radar_synthesis_fleet <- function(data,w_ratio,low_var,high_var,metrics=c("
                         group.point.size = 5,
                         axis.label.size = 7,
                         legend.text.size =24,
-                        legend.position = "right",
-                        plot.title = TeX(paste('$\\omega_I / \\omega_{II}=$',w_ratio)))+
+                        legend.position = "right")+
       scale_color_manual(values = lcols,
                          breaks=this_order)
     
@@ -5444,8 +5378,7 @@ plot_radar_synthesis_fleet <- function(data,w_ratio,low_var,high_var,metrics=c("
                       group.point.size = 5,
                       axis.label.size = 7,
                       legend.text.size =24,
-                      legend.position = "right",
-                      plot.title = TeX(paste('$\\frac{\\omega_I}{\\omega_{II}}=$',w_ratio)))+
+                      legend.position = "right")+
     scale_color_manual(values = lcols,
                        breaks=this_order)
   
@@ -5624,6 +5557,18 @@ save_last_heatmaps <- function(name,path,by_fleet){
                        paste0(path,"/by_species/"))
   ggsave(filename = paste0(full_path,name,".png"),
          height = if_else(by_fleet,2415,1470),
+         units = "px")
+  
+}
+
+save_last_radar <- function(name,path,by_fleet){
+  
+  full_path <- if_else(by_fleet,
+                       paste0(path,"/by_fleet/"),
+                       paste0(path,"/by_species/"))
+  ggsave(filename = paste0(full_path,name,".png"),
+         width = 4800,
+         height = 3600,
          units = "px")
   
 }
