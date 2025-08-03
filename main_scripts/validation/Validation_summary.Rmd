@@ -426,7 +426,7 @@ fl_order <- fleet_weight_data$fleet_isis
 plot_fleet_weight(fleet_weight_data)
 save_last(name = "fleet_weight",
           path = paste0(save_heatmaps_path,"/by_fleet/"),
-          h = 1930)
+          h = 2700)
 ```
 
 ### AE {.tabset}
