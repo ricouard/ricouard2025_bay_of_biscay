@@ -3804,7 +3804,7 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
                            qty == "land_species_fleet" ~ "Land./spe.",
                            qty=="land_species_season_fleet" ~ "Land./spe.,seas.")) %>%
     mutate(qty = str_replace_all(qty,"_"," "),
-           period = if_else(period==1,"2015-2018","2019-2022"),
+           period = paste("Period",period),
            gp=case_when(eval(parse(text = metrics)) <= thresh[1] ~ thresh_order[1],
                         thresh[1] < eval(parse(text = metrics)) & eval(parse(text = metrics)) <= thresh[2] ~ thresh_order[2],
                         thresh[2] < eval(parse(text = metrics)) & eval(parse(text = metrics)) <= thresh[3] ~ thresh_order[3],
@@ -3908,7 +3908,7 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
           axis.text.y = element_text(size=9),
           axis.title.x = element_text(size=16),
           axis.title.y = element_text(size=16),
-          strip.text.x = element_text(size = 13),
+          strip.text.x = element_text(size = 12),
           strip.text.y = element_text(size = 13),
           legend.text = element_text(size=10),
           legend.title = element_text(size=16),
@@ -5556,7 +5556,8 @@ save_last_heatmaps <- function(name,path,by_fleet){
                        paste0(path,"/by_fleet/"),
                        paste0(path,"/by_species/"))
   ggsave(filename = paste0(full_path,name,".png"),
-         height = if_else(by_fleet,2415,1470),
+         height = if_else(by_fleet,2700,1470),
+         width = 2415,
          units = "px")
   
 }
