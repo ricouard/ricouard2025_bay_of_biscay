@@ -356,24 +356,68 @@ plot_q_estim <- function(best_set_data,mean_data){
   data2 <- mean_data %>% mutate(year="mean") %>% select(year,q_name,q)
   data <-  rbind(data1,data2) %>% mutate(q_num = as.numeric(str_replace(q_name,"q","")))
   
-  fig <- ggplot(data) +
-    geom_point(mapping = aes(x = q_num, 
-                             y = q, 
-                             color = year, 
-                             shape = year),
-               size = 3) +
-    geom_line(mapping = aes(x = q_num, 
-                             y = q, 
-                             color = year),
-               linewidth = 0.8,
-               linetype='dotted') +
-    scale_x_continuous(breaks = unique(data$q_num))+
-    scale_color_manual(values=c(brewer.pal(n_year, "Blues"),"orange")) +
-    scale_shape_manual(values=c(rep(16,n_year),15)) +
-    ggtitle(paste("q estimation by population group -", species))+
-    theme_classic() +
-    xlab("Population group")+
-    ylab("q Value")
+  if(species == "Nephrops norvegicus"){
+    
+    data <- data %>%
+      mutate(sex=if_else(q_num<=34,"Male","Female"))
+    
+    fig <- ggplot(data) +
+      geom_point(mapping = aes(x = q_num, 
+                               y = q, 
+                               color = year, 
+                               shape = year),
+                 size = 3) +
+      geom_line(mapping = aes(x = q_num, 
+                              y = q, 
+                              color = year),
+                linewidth = 0.8,
+                linetype='dotted') +
+      facet_wrap(~factor(sex,levels = c("Male","Female")),nrow = 2)+
+      scale_color_manual(values=c(brewer.pal(n_year, "Blues"),"orange")) +
+      scale_shape_manual(values=c(rep(16,n_year),15)) +
+      ggtitle(paste("q estimation by population group -", species))+
+      xlab("Population group")+
+      ylab("q Value") +
+      theme_classic() +
+      theme(title=element_text(size=14),
+            axis.text.x = element_text(size=14),
+            axis.text.y = element_text(size=18),
+            axis.title.x = element_text(size=20),
+            axis.title.y = element_text(size=22),
+            strip.text.x = element_text(size = 18),
+            legend.text = element_text(size=18),
+            legend.title = element_text(size=22,face = "bold"),
+            legend.position = "bottom")
+    
+  }else{
+    
+    fig <- ggplot(data) +
+      geom_point(mapping = aes(x = q_num, 
+                               y = q, 
+                               color = year, 
+                               shape = year),
+                 size = 3) +
+      geom_line(mapping = aes(x = q_num, 
+                              y = q, 
+                              color = year),
+                linewidth = 0.8,
+                linetype='dotted') +
+      scale_color_manual(values=c(brewer.pal(n_year, "Blues"),"orange")) +
+      scale_shape_manual(values=c(rep(16,n_year),15)) +
+      ggtitle(paste("q estimation by population group -", species))+
+      xlab("Population group")+
+      ylab("q Value") +
+      theme_classic() +
+      theme(title=element_text(size=14),
+            axis.text.x = element_text(size=18),
+            axis.text.y = element_text(size=18),
+            axis.title.x = element_text(size=20),
+            axis.title.y = element_text(size=22),
+            legend.text = element_text(size=18),
+            legend.title = element_text(size=22,face = "bold"),
+            legend.position = "bottom")
+    
+  }
   
   return(fig)
 }

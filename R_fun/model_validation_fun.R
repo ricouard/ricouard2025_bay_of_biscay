@@ -3544,10 +3544,10 @@ plot_land_byspecies_byfleet_byyear <- function(data,this_fleet){
 plot_mean_access <- function(species,access_path){
   # access_path: the path where the csv files of accessibility are stored
   
-  Colors <- c(brewer.pal(5, "Blues")[2],
-              brewer.pal(5, "Blues")[3],
-              brewer.pal(5, "Blues")[4],
-              brewer.pal(5, "Blues")[5])
+  Colors <- c(brewer.pal(5, "Oranges")[2],
+              brewer.pal(5, "Oranges")[3],
+              brewer.pal(5, "Oranges")[4],
+              brewer.pal(5, "Oranges")[5])
   
   file <- paste0(access_path,"/",species,"/MeanAcc_",species,".csv")
   
@@ -3580,7 +3580,8 @@ plot_mean_access <- function(species,access_path){
             axis.title.x = element_text(size=20),
             axis.title.y = element_text(size=22),
             strip.text.x = element_text(size = 18),
-            legend.text = element_text(size=18))
+            legend.text = element_text(size=18),
+            legend.position = "bottom")
     
     
   }else{
@@ -3609,7 +3610,9 @@ plot_mean_access <- function(species,access_path){
             axis.text.y = element_text(size=18),
             axis.title.x = element_text(size=20),
             axis.title.y = element_text(size=22),
-            legend.text = element_text(size=18))
+            legend.text = element_text(size=18),
+            legend.title = element_text(size=22,face = "bold"),
+            legend.position = "bottom")
     
   }
   
@@ -3806,7 +3809,8 @@ plot_radar_synthesis_fleet <- function(data,w_ratio,low_var,high_var,metrics=c("
                         legend.text.size =24,
                         legend.position = "right")+
       scale_color_manual(values = lcols,
-                         breaks=this_order)
+                         breaks=this_order)+
+      guides(color = guide_legend(reverse = TRUE))
     
     plot_list[[i]] <- this_fig
     
@@ -3844,7 +3848,8 @@ plot_radar_synthesis_fleet <- function(data,w_ratio,low_var,high_var,metrics=c("
                       legend.text.size =24,
                       legend.position = "right")+
     scale_color_manual(values = lcols,
-                       breaks=this_order)
+                       breaks=this_order)+
+    guides(color = guide_legend(reverse = TRUE))
   
   plot_list[[length(groups)+1]] <- this_fig
   
@@ -3912,6 +3917,7 @@ plot_radar_synthesis_spp <- function(data,w_ratio,low_var,high_var,metrics=c("AE
                  axis.label.size = 5,
                  legend.position = "right",
                  plot.title = TeX(paste('$\\frac{\\omega_I}{\\omega_{II}}=$',w_ratio)))+
+    guides(color = guide_legend(reverse = TRUE))+
     scale_color_manual(values = lcols,
                        breaks=my_order)
     
