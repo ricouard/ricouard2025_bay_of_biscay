@@ -548,6 +548,7 @@ fleet_weight <- function(fleet_group_list,path,years=2015:2018,rm_fleets=NULL){
                                        fleet_group_list[i]=="sup12" ~ "FR >12",
                                        fleet_group_list[i]=="foreign" ~ "Foreign"))
         
+        
         Data <- rbind(Data,this_data)
     }
 
@@ -589,8 +590,11 @@ fleet_weight <- function(fleet_group_list,path,years=2015:2018,rm_fleets=NULL){
              mutate(length=word(fleet_isis,1,sep = " ")) %>%
              mutate(fleet_isis = if_else(fleet_group=="FR >12",str_replace(fleet_isis,length,""),fleet_isis)) %>%
              mutate(fleet_isis = if_else(fleet_group=="FR >12",paste(fleet_isis,length),fleet_isis)) %>%
-             select(-length) %>% # classement des flottilles
-             arrange(fleet_group,prop)
+             select(-length) %>% 
+             group_by(fleet_group) %>%# classement des flottilles
+             mutate(fleet_sum = sum(Landings_kg)) %>%
+             ungroup() %>%
+             arrange(-fleet_sum,prop)
     
   return(Data)
 }
@@ -2436,10 +2440,11 @@ plot_F_agegroup <- function(data,species){
 plot_fleet_weight <- function(data){
   
   fleet_order <- data %>% select(fleet_isis)
+  group_order <- data %>% select(fleet_group) %>% distinct()
   
   fig <- ggplot(data, aes(x = prop, y = factor(fleet_isis,levels = fleet_order$fleet_isis))) +
     geom_col()+
-    facet_grid(rows=vars(fleet_group),scale='free')+
+    facet_grid(factor(fleet_group,levels = group_order$fleet_group)~ . ,scale='free')+
     labs(title = "Cumulated frequency of landings by fleets")+
     xlab(label = "Proportion in landings")+
     ylab(label="Fleet")+
@@ -3178,7 +3183,7 @@ plot_heatmap_imp_thresh_period <- function(data,metrics,from,to,thresh=c(-0.1,-0
     fig <- ggplot(Data, aes(x=factor(qty,level = text_colors$qty), 
                             y=factor(fleet_isis, level = fleet_order), fill= factor(gp, level = thresh_order)))+
       geom_tile() +
-      facet_grid(fleet_group ~ period, scale = 'free')
+      facet_grid(factor(fleet_group,levels = c("FR >12","Foreign","FR <12")) ~ period,scale='free')
     
   }else{
     
@@ -3854,7 +3859,7 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
     fig <- ggplot(Data, aes(x=factor(qty,level = text_colors$qty), 
                             y=factor(fleet_isis,level = fleet_order), 
                             fill= factor(gp, level = thresh_order)))+
-      facet_grid(fleet_group ~ period,scale='free')
+      facet_grid(factor(fleet_group,levels = c("FR >12","Foreign","FR <12")) ~ period,scale='free')
     
   }else{
     
