@@ -413,8 +413,9 @@ for(m in seq(length(mod))){
 ## Summary figures by fleet by period{.tabset}
 Plot the list of fleets with respective weight in landings:
 ```{r}
-fleet_weight_data <- fleet_weight(fleet_group_list = c("foreign","inf12","sup12"),
+fleet_weight_data <- fleet_weight(fleet_group_list = c("sup12","foreign","inf12"),
                                   path = obs_data_path,
+                                  years=2015:2022,
                                   rm_fleets = c('other-12-15 missing',
                                                 'other-15-18 missing',
                                                 'other-18-24 missing',

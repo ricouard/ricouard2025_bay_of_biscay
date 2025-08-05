@@ -285,10 +285,6 @@ plot_SSB(Solea_data_ssb,species)
 plot_diagonal(Solea_data_ssb,species,metrics)
 ```
 
-Plotting (lines):
-```{r}
-plot_SSB_line(Solea_data_ssb,species)
-```
 
 #### Fishing mortality by age group
 ```{r}
@@ -596,10 +592,6 @@ plot_SSB(LepiWhi_data_ssb,species)
 plot_diagonal(LepiWhi_data_ssb,species,metrics)
 ```
 
-Plotting (lines):
-```{r}
-plot_SSB_line(LepiWhi_data_ssb,species)
-```
 
 #### Fishing mortality by age group
 ```{r}
@@ -912,11 +904,6 @@ plot_SSB(Lophius_data_ssb,species)
 plot_diagonal(Lophius_data_ssb,species,metrics)
 ```
 
-Plotting (lines):
-```{r}
-plot_SSB_line(Lophius_data_ssb,species)
-```
-
 #### Fishing mortality by age group
 ```{r}
 metrics <- "F by group"
@@ -1226,10 +1213,6 @@ plot_SSB(Merluccius_data_ssb,species)
 plot_diagonal(Merluccius_data_ssb,species,metrics)
 ```
 
-Plotting (lines):
-```{r}
-plot_SSB_line(Merluccius_data_ssb,species)
-```
 
 #### Fishing mortality by age group
 ```{r}
@@ -1515,11 +1498,6 @@ plot_SSB(Raja_data_ssb,species)
 plot_diagonal(Raja_data_ssb,species,metrics)
 ```
 
-Plotting (lines):
-```{r}
-plot_SSB_line(Raja_data_ssb,species)
-```
-
 
 
 #### Fishing mortality
@@ -1773,11 +1751,6 @@ Plotting:
 ```{r}
 plot_SSB(Leucoraja_data_ssb,species)
 plot_diagonal(Leucoraja_data_ssb,species,metrics)
-```
-
-Plotting (lines):
-```{r}
-plot_SSB_line(Leucoraja_data_ssb,species)
 ```
 
 
