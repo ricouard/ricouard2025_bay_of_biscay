@@ -3,7 +3,7 @@
 
 ## Introduction
 
-This document is a guide for reproducing the analysis performed in the paper Ricouard *et al.* (2025), *What can be done with the ISIS-Fish model of the mixed demersal fishery in the Bay of Biscay? Lessons learned from calibrating and validating a complex model*. It also contains complementary information on the calibration procedure (see section **Calibration details**) and complementary results not shown in the paper. 
+This document is a guide for reproducing the analysis performed in the paper Ricouard *et al.* (2025), *Towards implementing the Bay of Biscay multi-annual management plan: lessons from calibrating and validating the ISIS-Fish model*. It also contains complementary information on the calibration procedure (see section **Calibration details**) and complementary results not shown in the paper. 
 
 The repository is organised as follows:
 
