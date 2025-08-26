@@ -30,7 +30,7 @@ The repository is organised as follows:
 
 * `saved_plots` contains two types of plots produced at validation stage of the analysis: (i) heatmaps of skill assessment by species (or fleet) and variables for all models and metrics, and (ii) radar plots of aggregated quality indices by species (or fleet) for all models.
 
-
+In this github repository, you will find all the scripts and some basic input data necessary to reproduce the analysis. Consequently, the whole results can be obtained by re-running the process following the instructions but most outputs are not provided directly. However, a copy of our executed project, containing all processed data with all the results associated to this project (including those figuring in the paper) can be downloaded on the associated [SEANOE repository]().
 
 ## Technical requirements
 
@@ -47,15 +47,12 @@ The repository is organised as follows:
 * Simulations were run for a duration of 1 year at a time over the time-period 2015-2018, for each species separately. We first assumed  that accessibility was constant along the year. For each species and year of the plan, we drew from a Latin Hypersquare Sampling (LHS) a set of 500 values of $q_{access}$ and ran the model with that value.  Over all species, the total number of parameters to estimate was equal to : $75 \times 4$ years (2015-2018). Simulated catch by class were then compared to reference data by computing the objective function. Values of $\Phi_{\text{catch by class}}$ as a function $q_{access}(pop,cl)$, as well as optimal values of the latter are given in file `main_scripts/LHS_report.html` (see next section).
 
 * The model was set with values  $\widehat{q_{access}}(pop,cl,y)$ minimising $\Phi_{\text{catch by class}}$, ran for a duration of 1 year and the same objective function was computed for the variables listed in the column "calibration" of table 1 (see in the article's main text). Discrepancies in landings by season were found for most species. It was then decided to set a model with seasonalised accessibility where the annual value is multiplied by the average ratio over years of reference over simulated catch of the season:
-$$
-q_{access}(pop, cl,seas,y)=\frac{\widehat{q_{access}}(pop, cl,y) \sum_{y=2015}^{2018}\frac{C_{ref}(pop,cl,seas,y)}{C_{sim}(pop,cl,seas,y)}}{4}
-$$
+$$q_{access}(pop, cl,seas,y)=\frac{\widehat{q_{access}}(pop, cl,y) \sum_{y=2015}^{2018}\frac{C_{ref}(pop,cl,seas,y)}{C_{sim}(pop,cl,seas,y)}}{4}$$
 where $C_{ref}(pop,cl,seas,y)$ and $C_{sim}(pop,cl,seas,y)$ are the reference and simulated catch in weight (except for *N. norvegicus*, in numbers) of class $cl$  of population *pop* in season *seas* of year *y* ; 
                 
 * Unexpected discrepancies were also found in catch by metier and country. We then set the a model with corrected target factors:
-$$
-q_{target}(met,pop)=\frac{\widehat{q_{target}}(met,pop) \sum_{y=2015}^{2018}\frac{C_{ref}(pop,met,y)}{C_{sim}(pop,met,y)}}{4}
-$$
+$$q_{target}(met,pop)=\frac{\widehat{q_{target}}(met,pop) \sum_{y=2015}^{2018}\frac{C_{ref}(pop,met,y)}{C_{sim}(pop,met,y)}}{4}$$
+
 where $\widehat{q_{target}}(met,pop)$ is the previous estimation of target factors, and $C_{ref}(pop,met,y)$ and $C_{sim}(pop,met,y)$ are the reference and simulated catch of population *pop* by metier *met* in year *y*.
 
 Sensitivity of model skills to order of steps 2 and 3 was also assessed. That is the reason why we distinguish in the next section the models 2a/3a from 2b/3b. In the first case, the seasonalisation of $q_{access}(pop, cl,seas,y)$ is performed first (as described in the article) and the correction of target factor $q_{target}(met,pop)$ in a second step. For the second case, the order of corrections is reversed. We can see in the results exposed here that this choice makes little difference in the end.
