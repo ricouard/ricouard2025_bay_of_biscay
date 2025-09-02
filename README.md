@@ -5,6 +5,8 @@
 
 This document is a guide for reproducing the analysis performed in the paper Ricouard *et al.* (2025), *Towards implementing the Bay of Biscay multi-annual management plan: lessons from calibrating and validating the ISIS-Fish model*. It also contains complementary information on the calibration procedure (see section **Calibration details**) and complementary results not shown in the paper. 
 
+In this github repository, you will find all the scripts and some basic input data necessary to reproduce the analysis. Consequently, the whole results can be obtained by re-running the process following the instructions but most outputs are not provided directly. However, a copy of our executed project, containing all processed data with all the results associated to this project (including those figuring in the paper) can be downloaded on the associated [SEANOE repository]().
+
 The repository is organised as follows:
 
 * `main_scripts` contains the core of the project with `.Rmd` scripts containing the code for the analyses of the project. Once executed, they all produce a `.html` file containing results and displaying the code with explanations.
@@ -30,15 +32,6 @@ The repository is organised as follows:
 
 * `saved_plots` contains two types of plots produced at validation stage of the analysis: (i) heatmaps of skill assessment by species (or fleet) and variables for all models and metrics, and (ii) radar plots of aggregated quality indices by species (or fleet) for all models.
 
-In this github repository, you will find all the scripts and some basic input data necessary to reproduce the analysis. Consequently, the whole results can be obtained by re-running the process following the instructions but most outputs are not provided directly. However, a copy of our executed project, containing all processed data with all the results associated to this project (including those figuring in the paper) can be downloaded on the associated [SEANOE repository]().
-
-## Technical requirements
-
-* The following R packages are used in the project and should be installed before running the analyses: `cubelyr`, `dplyr`, `FLCore`, `FLXSA`, `here`, `lattice`, `iterators`, `tidyr`, `tidyverse` 
-
-* ISIS-Fish software is necessary to run validation simulations on a local computer. The software can be downloaded [here](https://forge.codelutin.com/projects/isis-fish/files) and complete documentation is available on the [official ISIS-Fish website](https://isis-fish.org/v4/index.html).
-
-* Access to Datarmor supercomputer to run the simulation plan is subject to authorisation from Ifremer's *Pôle de calcul et de données marines* (PCDM). Please contact: <pcdm@ifremer.fr> to get more information on access rights.
 
 ## Calibration details
 
@@ -48,6 +41,7 @@ In this github repository, you will find all the scripts and some basic input da
 
 * The model was set with values  $\widehat{q_{access}}(pop,cl,y)$ minimising $\Phi_{\text{catch by class}}$, ran for a duration of 1 year and the same objective function was computed for the variables listed in the column "calibration" of table 1 (see in the article's main text). Discrepancies in landings by season were found for most species. It was then decided to set a model with seasonalised accessibility where the annual value is multiplied by the average ratio over years of reference over simulated catch of the season:
 $$q_{access}(pop, cl,seas,y)=\frac{\widehat{q_{access}}(pop, cl,y) \sum_{y=2015}^{2018}\frac{C_{ref}(pop,cl,seas,y)}{C_{sim}(pop,cl,seas,y)}}{4}$$
+
 where $C_{ref}(pop,cl,seas,y)$ and $C_{sim}(pop,cl,seas,y)$ are the reference and simulated catch in weight (except for *N. norvegicus*, in numbers) of class $cl$  of population *pop* in season *seas* of year *y* ; 
                 
 * Unexpected discrepancies were also found in catch by metier and country. We then set the a model with corrected target factors:
@@ -56,6 +50,22 @@ $$q_{target}(met,pop)=\frac{\widehat{q_{target}}(met,pop) \sum_{y=2015}^{2018}\f
 where $\widehat{q_{target}}(met,pop)$ is the previous estimation of target factors, and $C_{ref}(pop,met,y)$ and $C_{sim}(pop,met,y)$ are the reference and simulated catch of population *pop* by metier *met* in year *y*.
 
 Sensitivity of model skills to order of steps 2 and 3 was also assessed. That is the reason why we distinguish in the next section the models 2a/3a from 2b/3b. In the first case, the seasonalisation of $q_{access}(pop, cl,seas,y)$ is performed first (as described in the article) and the correction of target factor $q_{target}(met,pop)$ in a second step. For the second case, the order of corrections is reversed. We can see in the results exposed here that this choice makes little difference in the end.
+
+## Technical requirements
+
+* The following R packages are used in the project and should be installed before running the analyses: `cubelyr`, `dplyr`, `FLCore`, `FLXSA`, `here`, `lattice`, `iterators`, `tidyr`, `tidyverse` 
+
+* ISIS-Fish software is necessary to run validation simulations on a local computer. The software can be downloaded [here](https://forge.codelutin.com/projects/isis-fish/files) and complete documentation is available on the [official ISIS-Fish website](https://isis-fish.org/v4/index.html).
+
+* Access to Datarmor supercomputer to run the simulation plan is subject to authorisation from Ifremer's *Pôle de calcul et de données marines* (PCDM). Please contact: <pcdm@ifremer.fr> to get more information on access rights.
+
+## Run ISIS-Fish simulation on a local computer
+
+Exports of raw simulation results are not provided in this repository for a reason of storage capacity (results are about 120GB). However, with the simulation folders provided in`Sim_data/raw`, it is possible too re-run the simulations with exactly the same settings and get the raw results. To do this, you need to have ISIS-Fish software installed (see **Technical requirements**). 
+
+Simulations folders (named `sim_calib_mod<x>_<year>_<date>` or `sim_valid_mod<x>_<year>_<date>`) must be copied or moved to the directory `isis-fish-4/isis-database/simulations` on the user's local computer. Then, in the simulation tab of ISIS-Fish software (top right of the panel) , select the simulation you want to charge in the menu `charger une ancienne simulation`. All simulation parameters parameters will be restored. Then, change the name of the simulation (top left of the panel) and click on `Simuler`to run the simulation. A new simulation folder will be created and raw results will be stored as `.csv` files in the folder `isis-fish-4/isis-database/simulations/<simulation_name>/resultExports`.
+
+To get more information on how to use ISIS-Fish software, for *e. g.* modifying the database and/or launching new simulations, please refer to the [official documentation](https://isis-fish.org/v4/index.html).
 
 
 ## Step by step execution of the analyses
