@@ -5,7 +5,7 @@
 
 This document is a guide for reproducing the analysis performed in the paper Ricouard *et al.* (2025), *Towards implementing the Bay of Biscay multi-annual management plan: lessons from calibrating and validating the ISIS-Fish model*. It also contains complementary information on the calibration procedure (see section **Calibration details**) and complementary results not shown in the paper. 
 
-In this github repository, you will find all the scripts and some basic input data necessary to reproduce the analysis. Consequently, the whole results can be obtained by re-running the process following the instructions but most outputs are not provided directly. However, a copy of our executed project, containing all processed data with all the results associated to this project (including those figuring in the paper) can be downloaded on the associated [SEANOE repository]().
+In this github repository, you will find all the scripts and some basic input data necessary to reproduce the analysis. Consequently, the whole results can be obtained by re-running the process following the instructions but most outputs are not provided directly. However, a copy of our executed project, containing all processed data with all the results associated to this project (including those figuring in the paper) can be downloaded on the associated [SEANOE repository](https://doi.org/10.17882/108317).
 
 The repository is organised as follows:
 
