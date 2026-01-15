@@ -3856,6 +3856,106 @@ plot_radar_synthesis_fleet <- function(data,w_ratio,low_var,high_var,metrics=c("
   return(plot_list)
 }
 
+plot_radar_synthesis_fleet2 <- function(data,metrics=c("AE","RwMSE","r","MEF"),groups=c('FR <12','FR >12','Foreign')){
+  # same as previous but only for observed variables
+  
+  mod <- unique(data$mod)
+ 
+  
+  # prepare data
+  Thresh <- data.frame('fleet_isis'=c('Poor','Acceptable'),
+                       'AE'=c(0.3,0.7),
+                       'r'=c(0.2,0.6),
+                       'RwMSE'=c(0.3,0.7),
+                       'MEF'=c(0.2,0.6))
+  
+  Data <- data %>%
+    select(fleet_isis,qty,eval(metrics)) %>%
+    mutate(group = case_when(grepl("ES",fleet_isis)|
+                               grepl("BE",fleet_isis)|
+                               grepl("UK",fleet_isis) ~ 'Foreign',
+                             grepl("(north)",fleet_isis)|
+                               grepl("(south)",fleet_isis) ~ 'FR >12',
+                             grepl("10-12",fleet_isis)|
+                               grepl("0-10",fleet_isis) ~ 'FR <12')) %>%
+    pivot_longer(eval(metrics),names_to = 'metrics') %>%
+    na.omit() %>%
+    mutate(value = case_when(metrics =='AE' ~ if_else(abs(value)<1,1-abs(value),0),
+                             metrics %in% c('MEF','r') ~ if_else(value <0,0,value),
+                             metrics %in% c('RwMSE','AAE','AE') ~ if_else(value>1,0,1-value))) %>% # remove values too great or too low for facility
+    group_by(fleet_isis,group,metrics) %>%
+    summarise(value=mean(value)) %>%
+    ungroup() %>%
+    mutate(value=value) %>%
+    group_by(fleet_isis,group,metrics) %>%
+    summarise(value=sum(value)) %>%
+    ungroup()
+  
+  plot_list <- list()
+  for(i in seq(length(groups))){
+    
+    this_group <- groups[i]
+    this_data <- Data %>%
+      filter(group==this_group) %>%
+      pivot_wider(names_from = metrics, values_from = value) %>%
+      select(fleet_isis,group,eval(metrics)) %>%
+      na.omit() %>%
+      rowwise() %>%
+      mutate(S=sum(c_across(eval(metrics)[1]:eval(metrics)[length(metrics)]))) %>%
+      arrange(S) %>%
+      ungroup() %>%
+      select(-c(S,group))%>%
+      rbind(Thresh) %>%
+      as.data.frame()
+    this_order <- this_data$fleet_isis
+    
+    Fleet_names <- this_data$fleet_isis
+    Max_min <- data.frame('AE'= c(1,0),
+                          'r'= c(1,0),
+                          'RwMSE'= c(1,0),
+                          'MEF'=c(1,0))
+    
+    this_data <- rbind(Max_min,this_data[-1])
+    
+    names(this_data) <- paste0(c(rep("I(",length(metrics))),
+                               names(this_data),
+                               c(rep(")",length(metrics))))
+    
+    row.names(this_data) <- c("max","min",Fleet_names)
+    
+    # plotting
+    fill_col <- rgb(1.0, 0.647, 0.0, 0.3)
+    par(cex=0.3,mar = c(14, 4, 4, 2))
+    fig <- radarchart(this_data,
+                      seg = 4,                    
+                      axistype = 4,
+                      pcol=c("red",rep("darkblue",nrow(this_data)-6),"blue",rep("transparent",2)),
+                      plwd=c(2,rep(1,nrow(this_data)-6),2,rep(0.1,2)),
+                      pfcol=c(rep("transparent",nrow(this_data)-4),rep(fill_col,2)),
+                      plty=1,
+                      vlcex=4,
+                      calcex=1.5,
+                      centerzero = FALSE,
+                      title=paste0(mod," - ",groups[i]),
+                      cex.main=2)       
+    
+    legend(
+      x = "bottom", 
+      legend = rownames(this_data[c(3,nrow(this_data)-2,nrow(this_data)-1,nrow(this_data)),]), 
+      horiz = F,
+      bty="n",
+      pch = 20 , 
+      col = c("red", "blue","orange",fill_col),
+      text.col = "black", 
+      cex = 3, 
+      pt.cex = 6,
+      xpd = TRUE ,
+      inset = c(0, -0.15)
+    )
+    
+  }
+}
+
 plot_radar_synthesis_spp <- function(data,w_ratio,low_var,high_var,metrics=c("AE","RwMSE","r","MEF")){
   # high_var: observed variables -> high weight
   # low_var: model predicted variable -> low weight
@@ -3980,18 +4080,19 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
     
   # plotting
   fill_col <- rgb(1.0, 0.647, 0.0, 0.3)
-  par(mar = c(15, 4, 4, 2))
+  par(cex=0.3,mar = c(5, 4, 4, 2))
   fig <- radarchart(Data,
                     seg = 4,                    
                     axistype = 4,
                     pcol=c("red",rep("darkblue",nrow(Data)-6),"blue",rep("transparent",2)),
-                    plwd=c(8,rep(3,nrow(Data)-6),8,rep(0.1,2)),
+                    plwd=c(2,rep(1,nrow(Data)-6),2,rep(0.1,2)),
                     pfcol=c(rep("transparent",nrow(Data)-4),rep(fill_col,2)),
                     plty=1,
                     vlcex=4,
                     calcex=1.5,
                     centerzero = FALSE,
-                    title=mod)       
+                    title=mod,
+                    cex.main=2)       
   
   legend(
     x = "bottom", 
@@ -4006,9 +4107,7 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
     xpd = TRUE ,
     inset = c(0, -0.1)
   )
-  
-  
-  return(fig)
+
 }
 
 plot_recruit <- function(data,species){
