@@ -39,6 +39,7 @@ library(readr)
 library(fmsb)
 library(ggradar)
 library(forcats)
+library(fmsb)
 
 import::here(.from = magrittr, "%>%", extract, extract2)
 import::here(.from = purrr, imap_chr, imap_dfc)
@@ -151,7 +152,7 @@ qty_fleet <- c("land_metier_fleet",
 
 If necessary, let us concatenate all comparison data sets, by quantity, across years and species (or fleets):
 ```{r,warning=FALSE,message=FALSE}
-new_conc <- T
+new_conc <- F
 if(new_conc){
   data_concatenation(mod_list = mod,
                      run_list = runs,
@@ -160,7 +161,7 @@ if(new_conc){
                      path = comp_data_path)
 }
 
-new_conc_flt <- T
+new_conc_flt <- F
 if(new_conc_flt){
   data_concatenation_flt(mod_list = mod,
                          run_list = runs,
@@ -384,26 +385,8 @@ for(i in seq(nrow(plan))){
 for(m in seq(length(mod))){
   this_mod <- mod[m]
   data <- Data_byperiod %>% filter(mod==this_mod & !SR)
-  plot <- plot_radar_synthesis_spp(data,
-                                   w_ratio = 1,
-                                   low_var = qty_mod, 
-                                   high_var = qty_obs)
+  plot <- plot_radar_synthesis_spp2(data,var = qty_obs)
   print(this_mod)
-  print(plot)
-  save_last_radar(name = paste0("spp_w1_",this_mod),
-                  path = save_radar_path,
-                  by_fleet = F)
-  
-  plot <- plot_radar_synthesis_spp(data,
-                                   w_ratio = 10,
-                                   low_var = qty_mod, 
-                                   high_var = qty_obs)
-  print(this_mod)
-  print(plot)
-  save_last_radar(name = paste0("spp_w10_",this_mod),
-                  path = save_radar_path,
-                  by_fleet = F)
-  
 }
 
 ```
@@ -631,31 +614,8 @@ for(i in seq(nrow(plan))){
 for(m in seq(length(mod))){
   this_mod <- mod[m]
   data <- Data_byfleet_byperiod %>% filter(mod==this_mod & !SR)
-  plot <- plot_radar_synthesis_fleet(data,
-                                     w_ratio = 1,
-                                     low_var = qty_mod, 
-                                     high_var = qty_obs)
+  plot <- plot_radar_synthesis_fleet2(data)
   print(this_mod)
-  
-  print(plot[[1]])
-  save_last_radar(name = paste0("flt_inf12_",this_mod),
-                  path = save_radar_path,
-                  by_fleet = T)
-  
-  print(plot[[3]])
-  save_last_radar(name = paste0("flt_foreign_",this_mod),
-                  path = save_radar_path,
-                  by_fleet = T)
-  print(plot[[4]])
-  save_last_radar(name = paste0("flt_grp_",this_mod),
-                  path = save_radar_path,
-                  by_fleet = T)
-  
-  print(plot[[9]])
-  save_last_radar(name = paste0("flt_sup12_",this_mod),
-                  path = save_radar_path,
-                  by_fleet = T)
-  
 }
 
 ```
