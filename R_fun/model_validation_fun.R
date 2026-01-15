@@ -3925,6 +3925,92 @@ plot_radar_synthesis_spp <- function(data,w_ratio,low_var,high_var,metrics=c("AE
   return(fig)
 }
 
+plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")){
+  # same as previous but only for observed variables
+  mod <- unique(data$mod)
+  
+  # prepare data
+  Thresh <- data.frame('species'=c('Poor','Acceptable'),
+                       'AE'=c(0.3,0.7),
+                       'r'=c(0.2,0.6),
+                       'RwMSE'=c(0.3,0.7),
+                       'MEF'=c(0.2,0.6))
+  
+  Data <- data %>%
+    select(species,qty,eval(metrics)) %>%
+    mutate(species=case_when(species == "Lepidorhombus_whiffiagonis" ~ "MEG",
+                             species == "Solea_solea" ~ "SOL",
+                             species == "Lophius_piscatorius" ~ "MON",
+                             species == "Nephrops_norvegicus" ~ "NEP",
+                             species == "Merluccius_merluccius" ~ "HKE",
+                             species == "Raja_clavata" ~ "RJC",
+                             species == "Leucoraja_naevus" ~ "RJN"))%>%
+    pivot_longer(eval(metrics),names_to = 'metrics') %>%
+    na.omit() %>%
+    mutate(value = case_when(metrics =='AE' ~ if_else(abs(value)<1,1-abs(value),0),
+                             metrics %in% c('MEF','r') ~ if_else(value <0,0,value),
+                             metrics %in% c('RwMSE','AAE','AE') ~ if_else(value>1,0,1-value))) %>% 
+    filter(qty %in% var) %>%
+    group_by(species,metrics) %>%
+    summarise(value=mean(value)) %>%
+    ungroup() %>%
+    pivot_wider(names_from = metrics, values_from = value) %>%
+    rowwise() %>%
+    select(species,eval(metrics)) %>%
+    mutate(S=sum(c_across(eval(metrics)[1]:eval(metrics)[length(metrics)]))) %>%
+    arrange(S) %>%
+    ungroup() %>%
+    select(-S) %>%
+    rbind(Thresh) %>%
+    as.data.frame()
+  
+    Spp_names <- Data$species
+    Max_min <- data.frame('AE'= c(1,0),
+                          'r'= c(1,0),
+                          'RwMSE'= c(1,0),
+                          'MEF'=c(1,0))
+    
+    Data <- rbind(Max_min,Data[-1])
+  
+    names(Data) <- paste0(c(rep("I(",length(metrics))),
+                         names(Data),
+                         c(rep(")",length(metrics))))
+    
+    row.names(Data) <- c("max","min",Spp_names)
+    
+  # plotting
+  fill_col <- rgb(1.0, 0.647, 0.0, 0.3)
+  par(mar = c(15, 4, 4, 2))
+  fig <- radarchart(Data,
+                    seg = 4,                    
+                    axistype = 4,
+                    pcol=c("red",rep("darkblue",nrow(Data)-6),"blue",rep("transparent",2)),
+                    plwd=c(8,rep(3,nrow(Data)-6),8,rep(0.1,2)),
+                    pfcol=c(rep("transparent",nrow(Data)-4),rep(fill_col,2)),
+                    plty=1,
+                    vlcex=4,
+                    calcex=1.5,
+                    centerzero = FALSE,
+                    title=mod)       
+  
+  legend(
+    x = "bottom", 
+    legend = rownames(Data[c(3,nrow(Data)-2,nrow(Data)-1,nrow(Data)),]), 
+    horiz = T,
+    bty="n",
+    pch = 20 , 
+    col = c("red", "blue","orange",fill_col),
+    text.col = "black", 
+    cex = 3, 
+    pt.cex = 6,
+    xpd = TRUE ,
+    inset = c(0, -0.1)
+  )
+  
+  
+  return(fig)
+}
+
 plot_recruit <- function(data,species){
   
   fig <- ggplot(data, aes(x = year, y = rec_n,fill=data_type)) +
