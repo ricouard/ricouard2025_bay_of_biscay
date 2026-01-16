@@ -2444,7 +2444,10 @@ plot_fleet_weight <- function(data){
   
   fig <- ggplot(data, aes(x = prop, y = factor(fleet_isis,levels = fleet_order$fleet_isis))) +
     geom_col()+
-    facet_grid(factor(fleet_group,levels = group_order$fleet_group)~ . ,scale='free')+
+    facet_grid(factor(fleet_group,
+                      levels = group_order$fleet_group)~ . ,
+               scale='free',
+               space='free_y')+
     labs(title = "Cumulated frequency of landings by fleets")+
     xlab(label = "Proportion in landings")+
     ylab(label="Fleet")+
@@ -2453,13 +2456,11 @@ plot_fleet_weight <- function(data){
                                      vjust = 0.9, 
                                      hjust= 0.9),
           title =element_text(size=8),
-          axis.text.y = element_text(size=10),
+          axis.text.y = element_text(size=12),
           axis.title.x = element_text(size=16),
           axis.title.y = element_text(size=16),
           strip.text.x = element_text(size = 13),
           strip.text.y = element_text(size = 13),
-          legend.text = element_text(size=10),
-          legend.title = element_text(size=16),
           panel.background = element_rect(fill = "white",
                                           colour = "black",
                                           linetype = "solid"),
@@ -2802,7 +2803,7 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
                            qty == "land_species_fleet" ~ "Land./spe.",
                            qty=="land_species_season_fleet" ~ "Land./spe.,seas.")) %>%
     mutate(qty = str_replace_all(qty,"_"," "),
-           period = paste("Period",period),
+           period = if_else(period==1,'Calibration','Hindcast'),
            gp=case_when(eval(parse(text = metrics)) <= thresh[1] ~ thresh_order[1],
                         thresh[1] < eval(parse(text = metrics)) & eval(parse(text = metrics)) <= thresh[2] ~ thresh_order[2],
                         thresh[2] < eval(parse(text = metrics)) & eval(parse(text = metrics)) <= thresh[3] ~ thresh_order[3],
@@ -2852,7 +2853,9 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
     fig <- ggplot(Data, aes(x=factor(qty,level = text_colors$qty), 
                             y=factor(fleet_isis,level = fleet_order), 
                             fill= factor(gp, level = thresh_order)))+
-      facet_grid(factor(fleet_group,levels = c("FR >12","Foreign","FR <12")) ~ period,scale='free')
+      facet_grid(factor(fleet_group,levels = c("FR >12","Foreign","FR <12")) ~ period,
+                 scales='free',
+                 space = 'free_y')
     
   }else{
     
@@ -2895,7 +2898,7 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
                       breaks=thresh_order)+
     labs(title = paste(mod,metrics),
          fill=metrics)+
-    xlab("Variable")+
+    xlab("Variables")+
     ylab(Ytitle) +
     theme(axis.text.x = element_text(size = 14,
                                      angle = 60, 
@@ -2903,12 +2906,12 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
                                      hjust= 0.9,
                                      color=text_colors$color),
           title =element_text(size=8),
-          axis.text.y = element_text(size=9),
-          axis.title.x = element_text(size=16),
-          axis.title.y = element_text(size=16),
-          strip.text.x = element_text(size = 12),
+          axis.text.y = element_text(size=12),
+          axis.title.x = element_text(size=18),
+          axis.title.y = element_text(size=18),
+          strip.text.x = element_text(size = 13),
           strip.text.y = element_text(size = 13),
-          legend.text = element_text(size=10),
+          legend.text = element_text(size=12),
           legend.title = element_text(size=16),
           panel.background = element_rect(fill = "darkgrey",
                                           colour = "black",
@@ -3464,6 +3467,7 @@ plot_land_byseason <- function(data,species){
     labs(title = paste("Landings by season -", species) )+
     xlab(label = "Year")+
     ylab(label="Landings (prop.)")+
+    ylim(0,0.55)+
     theme_classic()+
     theme(title=element_text(size=12),
           axis.text.x = element_text(size=20,
@@ -3473,7 +3477,8 @@ plot_land_byseason <- function(data,species){
           axis.title.x = element_text(size=28),
           axis.title.y = element_text(size=28),
           legend.title = element_blank(),
-          legend.text = element_text(size=20))
+          legend.text = element_text(size=20),
+          )
   
   
   return(fig)
@@ -4194,7 +4199,7 @@ save_last_heatmaps <- function(name,path,by_fleet){
                        paste0(path,"/by_species/"))
   ggsave(filename = paste0(full_path,name,".png"),
          height = if_else(by_fleet,2700,1470),
-         width = 2415,
+         width = 2900,#2415,
          units = "px")
   
 }
