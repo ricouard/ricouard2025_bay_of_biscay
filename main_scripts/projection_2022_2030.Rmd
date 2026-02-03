@@ -1,0 +1,155 @@
+---
+title: "Projection: 2022 - 2030"
+author: "A. Ricouard"
+date: "2026-02-03"
+output: html_document
+---
+
+
+```{r,echo=F}
+print(paste("start: ",Sys.time()))
+```
+
+
+# Introduction {.tabset}
+
+This document contains the outputs of a 2022-2030 simulation with model 3a, along with the code to display them. This is provided as an illustrative example of the model's good functioning in future projections.  The simulations are run for 9 years, starting in 2022, with forced recruitment.
+
+This document is divided into three sections (each one in a different tab). The reader mainly interested by the results will find them in the second and third section "Analysis by species" and "Analysis by fleets". 
+
+In "Analysis by species" section, he will find a tab by species and for each species, a tab by variable. These metrics are :
+
+* "Total catch"
+
+* "Catch by age group by year"
+
+* "Total landings by season"
+
+* "Landings by year by country"
+
+* "Landings by metier by year"
+
+* "Landings by metier by season"
+
+* "Total abundance"
+
+* "Abundance by age group"
+
+* "SSB"
+
+* "Fishing mortality by age group"
+
+The results consist in simulated time series for these variables.
+
+
+In "Analysis by fleet" section, he will find a tab for each fleet group (french smaller than 12m, french larger than 12m and foreign) and for each group, a tab by variable assessed for every fleet of the group. These variables are :
+
+* "Total landings by species" 
+
+* "Total landings by season"
+
+* "Landings by metier by year"
+
+* "Landings by metier by season"
+
+
+The first section, "Preparation", is for the advanced user wanting to reproduce the analysis or to check the whole process. This user will need the source code (.Rmd file), the companion script **model_validation_fun.R** as well as observed and simulated data in the right format. There, he will find all the settings and preliminary steps required to perform the analysis, including loading of the companion script and packages, path specifications and control of data importation. 
+
+
+## Preparation
+
+Before starting, we load necessary packages and the file containing all the functions we need:
+```{r setup, message=F}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(purrr, include.only = c("map_dfr"))
+library(here)
+library(scales)
+library(RColorBrewer)
+library(stringr)
+library(readr)
+library(forcats)
+
+library(parallel)
+library(doParallel, include.only = c("registerDoParallel")) 
+library(foreach)
+
+
+import::here(.from = magrittr, "%>%", extract, extract2)
+import::here(.from = purrr, imap_chr, imap_dfc)
+
+
+source(paste0(here(),"/R_fun/model_validation_fun.R"))
+
+```
+
+We have to specify the path to simulated data:
+```{r}
+sim_path <- paste0(here(),"/Sim_data/raw/projection_2022_2030/sim_ISIS_BoB_demo_2022_2030_2026-02-02-14-30")
+```
+
+The path to tidy simulation data:
+```{r}
+sim_tidy_path <- paste0(here(),"/Sim_data/tidy/projection_2022_2030")
+```
+
+
+For *Nephrops norvegicus* and *Merluccius merluccius*, we also need tables to convert groupisis in age:
+```{r}
+AgeLength_tables_path <- paste0(here(),"/input_data/age_length_corresp")
+```
+
+
+The list of species:
+```{r}
+Species <- c("Solea_solea",
+             "Lophius_piscatorius",
+             "Lepidorhombus_whiffiagonis",
+             "Raja_clavata",
+             "Leucoraja_naevus",
+             "Nephrops_norvegicus",
+             "Merluccius_merluccius")
+```
+
+The first time, import data by transforming the raw simulated data into .rds. Once imported, no need to do it again, work only with .rds.
+```{r,message=FALSE,warning=FALSE}
+import_simulations <- T
+if(import_simulations){
+  
+    for(i in seq(length(Species))){
+      
+      import_simu_byseason3(simu = sim_path,
+                            tidy = sim_tidy_path,
+                            species = Species[i],
+                            years=years)
+      
+      import_simu_Nbyyear2(simu = sim_path,
+                           tidy = sim_tidy_path,
+                           species = Species[i],
+                           years=years)
+      
+      import_simu_abundance(simu = sim_path,
+                            tidy = sim_tidy_path,
+                            species = Species[i],
+                            years=years)
+      
+      import_simu_ssb(simu = sim_path,
+                      tidy = sim_tidy_path,
+                      species = Species[i],
+                      years=years)
+      
+      import_simu_Fmor(simu = sim_path,
+                       tidy = sim_tidy_path,
+                       species = Species[i],
+                       years=years)
+      
+    }
+
+}
+
+```
+
