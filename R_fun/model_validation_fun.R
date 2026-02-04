@@ -2011,6 +2011,18 @@ metier_frequency <- function(data){
   return(Obs_data)
 }
 
+metier_frequency_proj <- function(data){
+  
+  Obs_data <- data %>% 
+    group_by(metier_isis) %>%
+    summarise(sim=sum(sim)) %>%
+    ungroup() %>%
+    mutate(freq = sim/sum(sim)) %>%
+    arrange(-freq) %>%
+    mutate(cumfreq = cumsum(freq))
+  return(Obs_data)
+}
+
 main_metiers <- function(freq_data,thresh){
   
   last_met <-  freq_data %>%
@@ -2236,6 +2248,40 @@ plot_catch_bygroup_byyear <- function(data,species){
   return(list_of_fig)
 }
 
+plot_catch_bygroup_byyear_proj <- function(data,species){
+  
+  g_list <- data %>% select(group) %>% arrange(group) %>% distinct() 
+  n_fig <- 1+ ((nrow(g_list)-1)%/%12)
+  list_of_fig <- list()
+  
+  for(i in seq(n_fig)){
+    
+    g_new <- g_list$group[(1+12*(i-1)):(12+12*(i-1))]
+    data_new <- data %>% 
+      filter(group %in% g_new) 
+    
+    
+    fig <- ggplot(data_new, aes(x = year, y = sim)) +
+      geom_line(linewidth=0.8,color="#4ebaaf")+
+      geom_point(size=3,color="#4ebaaf")+
+      scale_x_continuous(n.breaks = length(unique(data$year)))+
+      facet_wrap(~group, scales = "free") +
+      labs(title = paste("Catch by groupisis -", species) )+
+      xlab(label = "Year")+
+      ylab(label="Catch (kg)")+
+      theme_bw()+
+      theme(axis.text.x=element_text(angle = 45, hjust = 1),legend.title = element_blank())
+    
+    list_of_fig[[i]] <- fig
+    
+    
+  }
+  
+  
+  
+  return(list_of_fig)
+}
+
 plot_catch_byseason <- function(data,species){
   
   fig <- ggplot(data, aes(x = Season, y = value, fill=data_type)) +
@@ -2421,6 +2467,40 @@ plot_F_agegroup <- function(data,species){
       facet_wrap(~age, scales = "free") +
       scale_color_manual(values = c("#006c86", "#4ebaaf"),
                         labels = c("ref", "sim")) +
+      labs(title = paste("F by age group -", species) )+
+      xlab(label = "Year")+
+      ylab(label="F")+
+      theme_bw()+
+      theme(axis.text.x=element_text(angle = 45, hjust = 1),legend.title = element_blank())
+    
+    list_of_fig[[i]] <- fig
+    
+    
+  }
+  
+  
+  
+  return(list_of_fig)
+}
+
+plot_F_agegroup_proj <- function(data,species){
+  
+  g_list <- data %>% select(age) %>% arrange(age) %>% distinct() 
+  n_fig <- 1+ ((nrow(g_list)-1)%/%12)
+  list_of_fig <- list()
+  
+  for(i in seq(n_fig)){
+    
+    g_new <- g_list$age[(1+12*(i-1)):(12+12*(i-1))]
+    data_new <- data %>% 
+      filter(age %in% g_new) 
+    
+    
+    fig <- ggplot(data_new, aes(x = year, y = sim)) +
+      geom_line(linewidth=0.8,color= "#4ebaaf")+
+      geom_point(size=3,color= "#4ebaaf")+
+      scale_x_continuous(n.breaks = length(unique(data$year)))+
+      facet_wrap(~age, scales = "free") +
       labs(title = paste("F by age group -", species) )+
       xlab(label = "Year")+
       ylab(label="F")+
@@ -2951,6 +3031,30 @@ plot_land_bycountry_byyear <- function(data,species,cst_scale = T){
   return(fig)
 }
 
+plot_land_bycountry_byyear_proj <- function(data,species,cst_scale = T){
+  
+  facet_order <- data %>% 
+    group_by(Country) %>%
+    summarise(sim = sum(sim)) %>%
+    ungroup() %>%
+    arrange(-sim)
+  
+  fig <- ggplot(data, aes(x = year, y = sim)) +
+    geom_line(linewidth=0.8,color="#4ebaaf")+
+    geom_point(size=3,color="#4ebaaf")+
+    scale_x_continuous(n.breaks = length(unique(data$year)))+
+    facet_wrap(~ factor(Country,level=facet_order$Country),scales="free") +
+    labs(title = paste("Landings by country -", species) )+
+    xlab(label = "Year")+
+    ylab(label="Landings (prop.)")+
+    theme_bw()+
+    theme(legend.title = element_blank())
+  
+  if(cst_scale){ fig <- fig + ylim(0,1)}
+  
+  return(fig)
+}
+
 plot_land_byfleet_byseason <- function(data,cst_scale = T){
   
   facet_order <- data %>% 
@@ -3332,6 +3436,133 @@ plot_land_bymetier_byseason <- function(data,main_metier,species,cst_scale = T){
   return(list_of_fig)
 }
 
+plot_land_bymetier_byseason_proj <- function(data,main_metier,species,cst_scale = T){
+  
+  # preparation
+  m_list <- data %>%
+    filter(!metier_isis %in% main_metier$metier_isis) %>%
+    group_by(metier_isis) %>%
+    summarise(sim=sum(sim)) %>%
+    ungroup() %>%
+    arrange(-sim) %>%
+    select(metier_isis) %>% 
+    distinct() 
+  
+  n_fig <- 2 + ((nrow(m_list)-1)%/%12)
+  list_of_fig <- list()
+  
+  years <- unique(data$year)
+  
+  
+  
+  # first panel: main metiers
+  data_main <- data %>% 
+    filter(metier_isis %in% main_metier$metier_isis) %>%
+    mutate(year=case_when(str_detect(Season,'q.1') ~ year,
+                          str_detect(Season,'q.2') ~ year + 0.25,
+                          str_detect(Season,'q.3') ~ year + 0.5,
+                          str_detect(Season,'q.4') ~ year + 0.75))
+  
+  met_order <- data_main %>% 
+    group_by(metier_isis) %>%
+    summarise(sim=sum(sim)) %>%
+    ungroup() %>%
+    arrange(-sim) %>%
+    select(metier_isis) %>%
+    distinct()
+  
+  fig <- ggplot(data_main, aes(x = year, y = sim)) +
+    geom_line(linewidth=0.8,color="#4ebaaf")+
+    geom_point(size=3,color="#4ebaaf")+
+    scale_x_continuous(breaks = years)+
+    facet_wrap(~ factor(metier_isis,level=met_order$metier_isis), scales = "free") +
+    labs(title = paste("Landings profile by metier (main metiers) -", species))+
+    xlab(label = "Year")+
+    ylab(label="Landings (prop.)")+
+    theme_bw()+
+    theme(plot.title = element_text(color="#006c86",face="bold"),
+          axis.text.x=element_text(angle = 45 ),
+          legend.title = element_blank())
+  
+  if(cst_scale){ fig <- fig + ylim(0,max(data$sim))}
+  
+  list_of_fig[[1]] <- fig
+  
+  for(i in 2:n_fig){
+    
+    m_new <- m_list$metier_isis[(1+12*(i-2)):(12+12*(i-2))]
+    data_new <- data %>% 
+      filter(metier_isis %in% m_new) %>%
+      mutate(year=case_when(str_detect(Season,'q.1') ~ year,
+                            str_detect(Season,'q.2') ~ year + 0.25,
+                            str_detect(Season,'q.3') ~ year + 0.5,
+                            str_detect(Season,'q.4') ~ year + 0.75))
+    
+    
+    fig <- ggplot(data_new, aes(x = year, y = sim)) +
+      geom_line(linewidth=0.8,color="#4ebaaf") +
+      geom_point(size=3,color="#4ebaaf") +
+      scale_x_continuous(breaks = years)+
+      scale_color_manual(values = c("darkgrey", "grey"),
+                         labels = c("ref", "sim")) +
+      labs(title = paste("Landings profile by metier -", species) ) +
+      xlab(label = "Season")+
+      ylab(label="Landings (prop.)")+
+      theme_bw()+
+      theme(axis.text.x=element_text(angle = 45),
+            panel.background = element_rect(color = "white",
+                                            colour = "white",
+                                            linewidth = 0.5, linetype = "solid"),
+            legend.title = element_blank())
+    
+    if(cst_scale){ fig <- fig + ylim(0,max(data$sim))}
+    
+    if(i == 2){
+      
+      met_order2 <- data_new %>% 
+        group_by(metier_isis) %>%
+        summarise(sim=sum(sim)) %>%
+        ungroup() %>%
+        arrange(-sim) %>%
+        select(metier_isis) %>%
+        distinct()
+      
+      fig <- fig +facet_wrap(~ factor(metier_isis,level=met_order2$metier_isis), scales = "free") 
+      
+    }else if(i==3){
+      
+      met_order3 <- data_new %>%
+        group_by(metier_isis) %>%
+        summarise(sim=sum(sim)) %>%
+        ungroup() %>%
+        arrange(-sim) %>%
+        select(metier_isis) %>%
+        distinct()
+      
+      fig <- fig +facet_wrap(~ factor(metier_isis,level=met_order3$metier_isis), scales = "free") 
+      
+    }else if(i == 4){
+      
+      met_order4 <- data_new %>% 
+        group_by(metier_isis) %>%
+        summarise(sim=sum(sim)) %>%
+        ungroup() %>%
+        arrange(-sim) %>%
+        select(metier_isis) %>%
+        distinct()
+      
+      fig <- fig +facet_wrap(~ factor(metier_isis,level=met_order4$metier_isis), scales = "free") 
+      
+    }else{  fig <- fig +facet_wrap(~ metier_isis, scales = "free") }
+    
+    
+    list_of_fig[[i]] <- fig
+    
+  }
+  
+  return(list_of_fig)
+}
+
 plot_land_bymetier_byyear <- function(data,main_metier,species,cst_scale = T){
   
   # preparation
@@ -3467,7 +3698,7 @@ plot_land_byseason <- function(data,species){
     labs(title = paste("Landings by season -", species) )+
     xlab(label = "Year")+
     ylab(label="Landings (prop.)")+
-    ylim(0,0.55)+
+    ylim(0,0.58)+
     theme_classic()+
     theme(title=element_text(size=12),
           axis.text.x = element_text(size=20,
@@ -3479,6 +3710,37 @@ plot_land_byseason <- function(data,species){
           legend.title = element_blank(),
           legend.text = element_text(size=20),
           )
+  
+  
+  return(fig)
+}
+
+plot_land_byseason_proj <- function(data,species){
+  
+  data <- data %>% mutate(year=case_when(Season==1 ~ year,
+                                         Season==2 ~ year + 0.25,
+                                         Season==3 ~ year + 0.5,
+                                         Season==4 ~ year + 0.75))
+  
+  
+  fig <- ggplot(data, aes(x = year, y = sim)) +
+    geom_line(linewidth=0.8,color="#4ebaaf")+
+    geom_point(size=3,color="#4ebaaf")+
+    labs(title = paste("Landings by season -", species) )+
+    xlab(label = "Year")+
+    ylab(label="Landings (prop.)")+
+    ylim(0,0.58)+
+    theme_classic()+
+    theme(title=element_text(size=12),
+          axis.text.x = element_text(size=20,
+                                     angle = 45, 
+                                     vjust = 0.5),
+          axis.text.y = element_text(size=20),
+          axis.title.x = element_text(size=28),
+          axis.title.y = element_text(size=28),
+          legend.title = element_blank(),
+          legend.text = element_text(size=20),
+    )
   
   
   return(fig)
@@ -3681,6 +3943,42 @@ plot_N_agegroup <- function(data,species){
   return(list_of_fig)
 }
 
+plot_N_agegroup_proj <- function(data,species){
+  
+  g_list <- data %>% select(age) %>% arrange(age) %>% distinct() 
+  n_fig <- 1+ ((nrow(g_list)-1)%/%12)
+  list_of_fig <- list()
+  
+  for(i in seq(n_fig)){
+    
+    g_new <- g_list$age[(1+12*(i-1)):(12+12*(i-1))]
+    data_new <- data %>% 
+      filter(age %in% g_new) 
+    
+    
+    fig <- ggplot(data_new, aes(x = year, y = sim)) +
+      geom_line(linewidth=0.8,color="#4ebaaf")+
+      geom_point(size=3,color="#4ebaaf")+
+      scale_x_continuous(n.breaks = length(unique(data$year)))+
+      facet_wrap(~age, scales = "free") +
+      labs(title = paste("Abundance by age group -", species) )+
+      xlab(label = "Year")+
+      ylab(label="Abundance (ind.)")+
+      theme_bw()+
+      theme(axis.text.x=element_text(angle = 45, hjust = 1),
+            legend.title = element_blank())
+    
+    
+    list_of_fig[[i]] <- fig
+    
+    
+  }
+  
+  
+  
+  return(list_of_fig)
+}
+
 plot_N_agegroup_merluccius <- function(data,species){
   
   facet_order <- c("0","1","2","3","4","5","6","7","8","9-10","11-13","14+")
@@ -3739,6 +4037,30 @@ plot_N_total <- function(data,species){
           legend.text = element_text(size=20))
   
   return(fig)
+}
+
+plot_N_total_proj <- function(data,species){
+  
+  fig <- ggplot(data, aes(x = year, y = sim), color="#4ebaaf") +
+    geom_line(linewidth=0.8,color="#4ebaaf")+
+    geom_point(size=3,color ="#4ebaaf")+
+    scale_x_continuous(n.breaks = length(unique(data$year)))+
+    labs(title = paste("Total abundance by year -", species) )+
+    xlab(label = "Year")+
+    ylab(label="Abundance (ind.)")+
+    theme_classic()+
+    theme(title=element_text(size=12),
+          axis.text.x = element_text(size=20,
+                                     angle = 45, 
+                                     vjust = 0.5),
+          axis.text.y = element_text(size=20),
+          axis.title.x = element_text(size=28),
+          axis.title.y = element_text(size=28),
+          legend.title = element_blank(),
+          legend.text = element_text(size=20))
+  
+  return(fig)
+  
 }
 
 plot_radar_synthesis_fleet <- function(data,w_ratio,low_var,high_var,metrics=c("AE","RwMSE","r","MEF"),groups=c('FR <12','FR >12','Foreign')){
@@ -3945,14 +4267,15 @@ plot_radar_synthesis_fleet2 <- function(data,metrics=c("AE","RwMSE","r","MEF"),g
                       cex.main=2)       
     
     legend(
-      x = "bottom", 
+      x = "bottomright", 
       legend = rownames(this_data[c(3,nrow(this_data)-2,nrow(this_data)-1,nrow(this_data)),]), 
       horiz = F,
       bty="n",
-      pch = 20 , 
+      pch = c(NA,NA,20,20) , 
+      lty= c(1,1,NA,NA), 
       col = c("red", "blue","orange",fill_col),
       text.col = "black", 
-      cex = 3, 
+      cex = 5, 
       pt.cex = 6,
       xpd = TRUE ,
       inset = c(0, -0.15)
@@ -4104,7 +4427,8 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
     legend = rownames(Data[c(3,nrow(Data)-2,nrow(Data)-1,nrow(Data)),]), 
     horiz = T,
     bty="n",
-    pch = 20 , 
+    pch = c(NA,NA,20,20) , 
+    lty= c(1,1,NA,NA),
     col = c("red", "blue","orange",fill_col),
     text.col = "black", 
     cex = 3, 
@@ -4138,6 +4462,21 @@ plot_SSB <- function(data,species){
     scale_x_continuous(n.breaks = length(unique(data$year)))+
     scale_color_manual(values = c("#006c86", "#4ebaaf"),
                       labels = c("ref", "sim")) +
+    labs(title = paste("SSB by year -", species) )+
+    xlab(label = "Year")+
+    ylab(label="SSB (kg)")+
+    theme_bw()+
+    theme(legend.title = element_blank())
+  
+  return(fig)
+}
+
+plot_SSB_proj <- function(data,species){
+  
+  fig <- ggplot(data, aes(x = year, y = sim)) +
+    geom_line(linewidth=0.8,color="#4ebaaf")+
+    geom_point(size=3,color="#4ebaaf")+
+    scale_x_continuous(n.breaks = length(unique(data$year)))+
     labs(title = paste("SSB by year -", species) )+
     xlab(label = "Year")+
     ylab(label="SSB (kg)")+
