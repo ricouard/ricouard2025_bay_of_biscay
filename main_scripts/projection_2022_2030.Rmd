@@ -115,9 +115,14 @@ Species <- c("Solea_solea",
              "Merluccius_merluccius")
 ```
 
+We also specify the time period on which the model is projected:
+```{r}
+years <- 2022:2030
+```
+
 The first time, import data by transforming the raw simulated data into .rds. Once imported, no need to do it again, work only with .rds.
 ```{r,message=FALSE,warning=FALSE}
-import_simulations <- T
+import_simulations <- F
 if(import_simulations){
   
     for(i in seq(length(Species))){
@@ -126,11 +131,6 @@ if(import_simulations){
                             tidy = sim_tidy_path,
                             species = Species[i],
                             years=years)
-      
-      import_simu_Nbyyear2(simu = sim_path,
-                           tidy = sim_tidy_path,
-                           species = Species[i],
-                           years=years)
       
       import_simu_abundance(simu = sim_path,
                             tidy = sim_tidy_path,
@@ -150,6 +150,224 @@ if(import_simulations){
     }
 
 }
+
+```
+### *Solea solea* {.tabset}
+```{r}
+species <- "Solea solea"
+spp_code <- str_replace(species," ","_")
+```
+
+Reading simulated dataset:
+```{r,message=FALSE,warnings = FALSE}
+Sim_byseason <- read_tidysim_byseason(species = spp_code, 
+                                      years = years,
+                                      path = sim_tidy_path)
+
+Sim_byyear <- transform_tidy_byyear(Sim_byseason)
+
+Sim_N <- read_tidysim_N(species = spp_code, 
+                        years = years,
+                        path = sim_tidy_path)
+
+Sim_F <- read_tidysim_F(species = spp_code, 
+                        years = years,
+                        path = sim_tidy_path)
+
+Sim_SSB <- read_tidysim_SSB(species = spp_code, 
+                            years = years,
+                            path = sim_tidy_path)
+
+```
+
+#### Total abundance
+Preparation of data for plotting:
+```{r}
+Data <- Sim_N %>%
+    group_by(year) %>%
+    summarise(sim = sum(N_jan)) %>%
+    ungroup() 
+
+```
+
+Plotting:
+```{r}
+plot_N_total_proj(data=Data,
+                 species = species)
+```
+
+#### Abundance by age group
+
+Preparation of data for plotting:
+```{r}
+Data <- Sim_N %>%
+    mutate(species=spp_code) %>%
+    mutate(age = case_when(species=="Solea_solea" ~ as.character(group+2),
+                           species=="Lepidorhombus_whiffiagonis" ~ as.character(group+1),
+                           species=="Lophius_piscatorius" ~ as.character(group),
+                           species %in% c("Raja_clavata","Leucoraja_naevus") ~ "all",
+                           species == "Merluccius_merluccius" ~ group_to_age_merluccius(group))) %>%
+    rename(sim = N_jan) %>%
+    group_by(year,age) %>%
+    summarise(sim=sum(sim)) %>%
+    ungroup()
+
+```
+
+Plotting:
+```{r}
+plots <- plot_N_agegroup_proj(Data,species)
+for(i in seq(length(plots))){ 
+  print(plot_s[[i]])
+}
+```
+
+
+
+#### SSB
+Preparation of data for plotting:
+```{r}
+ Data <- Sim_SSB %>% rename(sim = SSBjan)
+```
+
+Plotting:
+```{r}
+plot_SSB_proj(Data,species)
+```
+
+#### Fishing mortality by age group
+Preparation of data for plotting:
+```{r}
+Data <- Sim_F %>%
+    mutate(species=spp_code) %>%
+    mutate(age = case_when(species=="Solea_solea" ~ as.character(group+2),
+                           species=="Lepidorhombus_whiffiagonis" ~ as.character(group+1),
+                           species=="Lophius_piscatorius" ~ as.character(group),
+                           species %in% c("Raja_clavata","Leucoraja_naevus") ~ "all",
+                           species == "Merluccius_merluccius" ~ group_to_age_merluccius(group))) %>%
+    rename(sim = Fmor) %>%
+    select(year,age,sim)
+
+```
+
+Plotting:
+```{r}
+plots <- plot_F_agegroup_proj(Data,species)
+for(i in seq(length(plots))){ 
+  print(plots[[i]])
+}
+```
+
+#### Catch by group ISIS by year
+Preparation of data for plotting:
+```{r,message=FALSE}
+Data <- Sim_byyear %>%
+    group_by(group,year) %>%
+    summarise(sim = sum(value)) %>%
+    ungroup() 
+```
+
+Plotting:
+```{r}
+plots <- plot_catch_bygroup_byyear_proj(Data,species)
+for(i in seq(length(plots))){ 
+  print(plots[[i]])
+}
+```
+
+
+#### Landings by year by country
+
+Here, we are interested in the proportion of each country in the landings. Absolute number can differ as observation datset are different from calibration datasets.
+
+Preparation of data for plotting:
+```{r,message=FALSE}
+ Data <- Sim_byyear %>%
+    mutate(Country = case_when(grepl("BE",strategy) ~ "BEL",
+                               grepl("ES",strategy) ~ "ESP",
+                               grepl("UK",strategy) ~ "UK",
+                               !(grepl("BE",strategy)|grepl("ES",strategy)|grepl("UK",strategy)) ~ "FRA")) %>%
+    group_by(year,Country) %>%
+    summarise(sim = sum(value)) %>%
+    ungroup() %>%
+    group_by(year) %>%
+    mutate(sim=sim/sum(sim)) %>%
+    ungroup()
+```
+
+Plotting:
+```{r}
+plot_land_bycountry_byyear_proj(Data,species)
+```
+
+
+
+#### Total landings by season 
+
+Preparation of data for plotting:
+```{r,message=FALSE}
+Data <- Sim_byseason %>%
+    select(season,value,year) %>%
+    group_by(year,season) %>%
+    summarise(sim = sum(value)) %>%
+    ungroup() %>%
+    mutate(Season=season+1) %>%
+    group_by(year) %>%
+    mutate(sim=sim/sum(sim)) %>%
+    ungroup() %>%
+    select(-season)
+
+```
+
+Plotting:
+```{r}
+plot_land_byseason_proj(Data,species)
+```
+
+
+#### Landings by metier by season
+
+Preparation of data for plotting:
+```{r,message=FALSE}
+Data <- Sim_byseason %>%
+    group_by(year,season,metier) %>%
+    summarise(sim = sum(value)) %>%
+    ungroup() %>%
+    mutate(metier_isis = if_else(grepl("27.",metier),
+                                 word(metier,1,sep="-"),
+                                 word(metier,1,sep="_Z"))) %>%
+    mutate(metier_isis = word(metier_isis,1,sep="-")) %>%
+    mutate(metier_isis = fct_recode(metier_isis, ### recoding metier name for correspondance with oserved data
+                                    "O_HKE" = "O_NS_DEF",
+                                    "O_HKE" = "O_NS_CEP",
+                                    "O_NEP" = "O_5",
+                                    "G_SOL" = "G_MNZ",
+                                    "G_HKE" = "G_MIX",
+                                    "G_HKE" = "G_1",
+                                    "G_LOW" = "G_low_activity_1",
+                                    "G_LOW" = "G_low_activity_2",
+                                    "G_LOW" = "G_low_activity_3",
+                                    "L_HKE" = "L_3",
+                                    "L_HKE" = "L_2",
+                                    "M_HKE" = "M_1",
+                                    "M_LOW" = "M_low_activity_1")) %>%
+    group_by(year,season,metier_isis) %>%
+    summarise(sim = sum(sim)) %>%
+    ungroup() %>%
+    mutate(Season=season+1) %>%
+    mutate(Season = paste0(year," q.",Season)) %>%
+    group_by(year) %>%
+    mutate(sim=sim/sum(sim)) %>%
+    ungroup() %>%
+    select(-c(season))
+```
+
+Plotting:
+```{r}
+plots <- plot_land_bymetier_byseason_proj(data = Data,
+                                          main_metier = main_metiers(freq_data = metier_frequency_proj(Data),thresh=0.9),
+                                          species = species)
+for(i in seq(length(plots))){print(plots[[i]])}
 
 ```
 
