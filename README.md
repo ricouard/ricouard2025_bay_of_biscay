@@ -143,3 +143,7 @@ Rscript -e "rmarkdown::render('main_scripts/validation/Validation_summary.Rmd')"
 ```
 The resulting `.html` files contains heatmaps of quality  metrics measured for all models, as well as measures of improvement of these metrics between models. It also contains radar plots for multi-metrics synthesis. At this step, the most useful plots for the manuscript are saved in the folder `saved_plots`.
 
+* We also provide an illustration of the good functioning of the model in projection with a simulation of the final model (model 3a) for the period 2022-2030. All variables in the analysis by species are projected with forced recruitment. In the future, these projections may be compared with available reference data. The directory corresponding to the ISIS-Fish simulation is `Sim_data/projection_2022_2030`. It is fully provided in the SEANOE except the result exports which are too heavy. However, all information to reproduce the simulation can be found in this directory. With this simulation directory correctly placed in the project, it is possible to display the outputs by running:
+```
+Rscript -e "rmarkdown::render('main_scripts/projection_2022_2030.Rmd')"
+```
