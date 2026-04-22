@@ -283,7 +283,6 @@ plotOF_nephrops <- function(data,log_scale=F){
   
 }
 
-
 plot_obs_vs_sim <- function(data){
   
   data <- data %>% pivot_longer(cols = c("sim","obs"), names_to = "datatype")
@@ -366,27 +365,28 @@ plot_q_estim <- function(best_set_data,mean_data){
                                y = q, 
                                color = year, 
                                shape = year),
-                 size = 3) +
+                 size = 2) +
       geom_line(mapping = aes(x = q_num, 
                               y = q, 
                               color = year),
-                linewidth = 0.8,
+                linewidth = 0.6,
                 linetype='dotted') +
       facet_wrap(~factor(sex,levels = c("Male","Female")),nrow = 2)+
       scale_color_manual(values=c(brewer.pal(n_year, "Blues"),"orange")) +
       scale_shape_manual(values=c(rep(16,n_year),15)) +
+      scale_y_continuous(breaks=c(0,0.4,0.8))+
       ggtitle(paste("q estimation by population group -", species))+
-      xlab("Population group")+
+      xlab("group")+
       ylab("q Value") +
       theme_classic() +
-      theme(title=element_text(size=14),
+      theme(title=element_text(size=10),
             axis.text.x = element_text(size=14),
-            axis.text.y = element_text(size=18),
+            axis.text.y = element_text(size=14),
             axis.title.x = element_text(size=20),
-            axis.title.y = element_text(size=22),
-            strip.text.x = element_text(size = 18),
+            axis.title.y = element_text(size=20),
+            strip.text = element_text(size = 14),
             legend.text = element_text(size=18),
-            legend.title = element_text(size=22,face = "bold"),
+            legend.title = element_text(size=18,face = "bold"),
             legend.position = "bottom")
     
   }else{
@@ -405,19 +405,25 @@ plot_q_estim <- function(best_set_data,mean_data){
       scale_color_manual(values=c(brewer.pal(n_year, "Blues"),"orange")) +
       scale_shape_manual(values=c(rep(16,n_year),15)) +
       ggtitle(paste("q estimation by population group -", species))+
-      xlab("Population group")+
+      xlab("group")+
       ylab("q Value") +
       theme_classic() +
-      theme(title=element_text(size=14),
+      theme(title=element_text(size=10),
             axis.text.x = element_text(size=18),
-            axis.text.y = element_text(size=18),
+            axis.text.y = element_text(size=16),
             axis.title.x = element_text(size=20),
-            axis.title.y = element_text(size=22),
+            axis.title.y = element_text(size=20),
             legend.text = element_text(size=18),
-            legend.title = element_text(size=22,face = "bold"),
+            legend.title = element_text(size=18,face = "bold"),
             legend.position = "bottom")
     
   }
+  
+  ggsave(filename = paste0(here(),"/saved_plots/q_estim/",substr(species,1,3),"_year.png"),
+         height = 960,
+         width = 1920,
+         units = "px")
+  
   
   return(fig)
 }
