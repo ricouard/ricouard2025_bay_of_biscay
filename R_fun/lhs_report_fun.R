@@ -355,6 +355,7 @@ plot_q_estim <- function(best_set_data,mean_data){
   data2 <- mean_data %>% mutate(year="mean") %>% select(year,q_name,q)
   data <-  rbind(data1,data2) %>% mutate(q_num = as.numeric(str_replace(q_name,"q","")))
   
+  
   if(species == "Nephrops norvegicus"){
     
     data <- data %>%
@@ -372,7 +373,7 @@ plot_q_estim <- function(best_set_data,mean_data){
                 linewidth = 0.6,
                 linetype='dotted') +
       facet_wrap(~factor(sex,levels = c("Male","Female")),nrow = 2)+
-      scale_color_manual(values=c(brewer.pal(n_year, "Blues"),"orange")) +
+      scale_color_manual(values=c(mako(n_year+2)[1:n_year+1],"orange")) +
       scale_shape_manual(values=c(rep(16,n_year),15)) +
       scale_y_continuous(breaks=c(0,0.4,0.8))+
       ggtitle(paste("q estimation by population group -", species))+
@@ -402,7 +403,7 @@ plot_q_estim <- function(best_set_data,mean_data){
                               color = year),
                 linewidth = 0.8,
                 linetype='dotted') +
-      scale_color_manual(values=c(brewer.pal(n_year, "Blues"),"orange")) +
+      scale_color_manual(values=c(mako(n_year+2)[1:n_year+1],"orange")) +
       scale_shape_manual(values=c(rep(16,n_year),15)) +
       ggtitle(paste("q estimation by population group -", species))+
       xlab("group")+
