@@ -2082,7 +2082,7 @@ plot_catch_and_TAC <- function(data,display_TAC=T){
     geom_point(size=3)+
     scale_x_continuous(n.breaks = length(unique(data$year)))+
     scale_linetype_manual(values=c("solid","solid","dotted"),guide = "none")+
-    scale_color_manual(values = c("#006c86", "#4ebaaf","orange"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF","orange"),
                        labels = c("ref", "sim","TAC")) +
     labs(title = paste("Catch by year -", spp),color="Data type")+
     xlab(label = "Year")+
@@ -2105,7 +2105,7 @@ plot_catch_and_TAC_allSpp <- function(data,display_TAC=T){
     geom_point(size=3)+
     scale_x_continuous(n.breaks = length(unique(data$year)))+
     scale_linetype_manual(values=c("solid","solid","dotted"),guide = "none")+
-    scale_color_manual(values = c("#006c86", "#4ebaaf","orange"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF","orange"),
                        labels = c("ref", "sim","TAC")) +
     xlab(label = "Year")+
     ylab(label="Catch (kg)")+
@@ -2124,7 +2124,7 @@ plot_catch_byage_merluccius <- function(data){
   fig <- ggplot(data, aes(x = as.character(year), y = value,fill=data_type)) +
     stat_summary(fun = "sum", geom = "bar", position = "dodge") +
     facet_wrap(~ factor(age_group,level=facet_order), scales = "free") +
-    scale_fill_manual(values = c("#006c86", "#4ebaaf"),
+    scale_fill_manual(values = c("#440154FF", "#21908CFF"),
                       labels = c("ref", "sim")) +
     labs(title = paste("Catch by age group - Merluccius merluccius") )+
     xlab(label = "Year")+
@@ -2160,7 +2160,7 @@ plot_catch_byage_nephrops <- function(data){
   fig1 <- ggplot(data1, aes(x = as.character(year), y = value,fill=data_type)) +
     stat_summary(fun = "sum", geom = "bar", position = "dodge") +
     facet_wrap(~ factor(age_group,level=facet_order1), scales = "free") +
-    scale_fill_manual(values = c("#006c86", "#4ebaaf"),
+    scale_fill_manual(values = c("#440154FF", "#21908CFF"),
                       labels = c("ref", "sim")) +
     labs(title = "Catch by age group - Nephrops norvegicus" )+
     xlab(label = "Year")+
@@ -2171,7 +2171,7 @@ plot_catch_byage_nephrops <- function(data){
   fig2 <- ggplot(data2, aes(x = as.character(year), y = value,fill=data_type)) +
     stat_summary(fun = "sum", geom = "bar", position = "dodge") +
     facet_wrap(~ factor(age_group,level=facet_order2), scales = "free") +
-    scale_fill_manual(values = c("#006c86", "#4ebaaf"),
+    scale_fill_manual(values = c("#440154FF", "#21908CFF"),
                       labels = c("ref", "sim")) +
     labs(title = "Catch by age group - Nephrops norvegicus" )+
     xlab(label = "Year")+
@@ -2198,7 +2198,7 @@ plot_catch_bygroup_byseason <- function(data,species){
     fig <- ggplot(data_new, aes(x = Season, y = value, fill=data_type)) +
       stat_summary(fun = "sum", geom = "bar", position = "dodge") +
       facet_wrap(~ group, scales = "free") +
-      scale_fill_manual(values = c("#006c86", "#4ebaaf"),
+      scale_fill_manual(values = c("#440154FF", "#21908CFF"),
                         labels = c("ref", "sim")) +
       labs(title = paste("Catch by season -", species) )+
       xlab(label = "Year")+
@@ -2230,7 +2230,7 @@ plot_catch_bygroup_byyear <- function(data,species){
       geom_point(size=3)+
       scale_x_continuous(n.breaks = length(unique(data$year)))+
       facet_wrap(~group, scales = "free") +
-      scale_color_manual(values = c("#006c86", "#4ebaaf"),
+      scale_color_manual(values = c("#440154FF", "#21908CFF"),
                         labels = c("ref", "sim")) +
       labs(title = paste("Catch by groupisis -", species) )+
       xlab(label = "Year")+
@@ -2262,8 +2262,8 @@ plot_catch_bygroup_byyear_proj <- function(data,species){
     
     
     fig <- ggplot(data_new, aes(x = year, y = sim)) +
-      geom_line(linewidth=0.8,color="#4ebaaf")+
-      geom_point(size=3,color="#4ebaaf")+
+      geom_line(linewidth=0.8,color="#21908CFF")+
+      geom_point(size=3,color="#21908CFF")+
       scale_x_continuous(n.breaks = length(unique(data$year)))+
       facet_wrap(~group, scales = "free") +
       labs(title = paste("Catch by groupisis -", species) )+
@@ -2286,7 +2286,7 @@ plot_catch_byseason <- function(data,species){
   
   fig <- ggplot(data, aes(x = Season, y = value, fill=data_type)) +
     stat_summary(fun = "sum", geom = "bar", position = "dodge") +
-    scale_fill_manual(values = c("#006c86", "#4ebaaf"),
+    scale_fill_manual(values = c("#440154FF", "#21908CFF"),
                       labels = c("ref", "sim")) +
     labs(title = paste("Catch by season -", species) )+
     xlab(label = "Season")+
@@ -2302,7 +2302,7 @@ plot_catch_total_byyear <- function(data,species){
     geom_line(linewidth=0.8)+
     geom_point(size=3)+
     scale_x_continuous(n.breaks = length(unique(data$year)))+
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                       labels = c("ref", "sim")) +
     labs(title = paste("Total catch by year -", species) )+
     xlab(label = "Year")+
@@ -2338,7 +2338,7 @@ plot_catchN_bygroup_byyear <- function(data,species){
     fig <- ggplot(data_new, aes(x = as.character(year), y = value, fill= data_type)) +
       stat_summary(fun = "sum", geom = "bar", position = "dodge") +
       facet_wrap(~group, scales = "free") +
-      scale_fill_manual(values = c("#006c86", "#4ebaaf"),
+      scale_fill_manual(values = c("#440154FF", "#21908CFF"),
                         labels = c("ref", "sim")) +
       labs(title = paste("Catch by groupisis -", species) )+
       xlab(label = "Year")+
@@ -2359,7 +2359,7 @@ plot_catchN_total_byyear <- function(data,species){
   
   fig <- ggplot(data, aes(x = as.character(year), y = value, fill=data_type)) +
     stat_summary(fun = "sum", geom = "bar", position = "dodge") +
-    scale_fill_manual(values = c("#006c86", "#4ebaaf"),
+    scale_fill_manual(values = c("#440154FF", "#21908CFF"),
                       labels = c("ref", "sim")) +
     labs(title = paste("Total catch by year -", species) )+
     xlab(label = "Year")+
@@ -2387,7 +2387,7 @@ plot_catch_bycountry_bygroup_byyear <- function(data,species){
       facet_grid(group ~ Country, 
                  margins=FALSE,
                  labeller = labeller(.rows = label_both, .cols = label_value)) +
-      scale_fill_manual(values = c("#006c86", "#4ebaaf"),
+      scale_fill_manual(values = c("#440154FF", "#21908CFF"),
                         labels = c("ref", "sim")) +
       labs(title = paste("Catch by country -", species) )+
       xlab(label = "Year")+
@@ -2465,7 +2465,7 @@ plot_F_agegroup <- function(data,species){
       geom_point(size=3)+
       scale_x_continuous(n.breaks = length(unique(data$year)))+
       facet_wrap(~age, scales = "free") +
-      scale_color_manual(values = c("#006c86", "#4ebaaf"),
+      scale_color_manual(values = c("#440154FF", "#21908CFF"),
                         labels = c("ref", "sim")) +
       labs(title = paste("F by age group -", species) )+
       xlab(label = "Year")+
@@ -2497,8 +2497,8 @@ plot_F_agegroup_proj <- function(data,species){
     
     
     fig <- ggplot(data_new, aes(x = year, y = sim)) +
-      geom_line(linewidth=0.8,color= "#4ebaaf")+
-      geom_point(size=3,color= "#4ebaaf")+
+      geom_line(linewidth=0.8,color= "#21908CFF")+
+      geom_point(size=3,color= "#21908CFF")+
       scale_x_continuous(n.breaks = length(unique(data$year)))+
       facet_wrap(~age, scales = "free") +
       labs(title = paste("F by age group -", species) )+
@@ -2622,7 +2622,7 @@ plot_heatmap_imp_thresh <- function(data,metrics,from,to,thresh=c(-0.1,-0.01,0.0
   text_colors <- Data %>% 
     select(qty) %>% 
     distinct() %>%
-    mutate(color= if_else(grepl("Land",qty)|grepl("Catch",qty),"#4ebaaf","#006c86"))
+    mutate(color= if_else(grepl("Land",qty)|grepl("Catch",qty),"#21908CFF","#440154FF"))
   
   if(by_fleet){
     # arrange by groups of fleets
@@ -2713,7 +2713,7 @@ plot_heatmap_imp_thresh_period <- function(data,metrics,from,to,thresh=c(-0.1,-0
   text_colors <- Data %>% 
     select(qty) %>% 
     distinct() %>%
-    mutate(color= if_else(grepl("Land",qty)|grepl("Catch",qty),"#4ebaaf","#006c86"))
+    mutate(color= if_else(grepl("Land",qty)|grepl("Catch",qty),"#21908CFF","#440154FF"))
   
   
   if(by_fleet){
@@ -2910,7 +2910,7 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
   text_colors <- Data %>% 
     select(qty) %>% 
     distinct() %>%
-    mutate(color= if_else(grepl("Land",qty)|grepl("Catch",qty),"#4ebaaf","#006c86")) %>%
+    mutate(color= if_else(grepl("Land",qty)|grepl("Catch",qty),"#21908CFF","#440154FF")) %>%
     arrange(color)
   
   if(by_fleet){
@@ -3018,7 +3018,7 @@ plot_land_bycountry_byyear <- function(data,species,cst_scale = T){
     geom_point(size=3)+
     scale_x_continuous(n.breaks = length(unique(data$year)))+
     facet_wrap(~ factor(Country,level=facet_order$Country),scales="free") +
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                       labels = c("ref", "sim")) +
     labs(title = paste("Landings by country -", species) )+
     xlab(label = "Year")+
@@ -3040,8 +3040,8 @@ plot_land_bycountry_byyear_proj <- function(data,species,cst_scale = T){
     arrange(-sim)
   
   fig <- ggplot(data, aes(x = year, y = sim)) +
-    geom_line(linewidth=0.8,color="#4ebaaf")+
-    geom_point(size=3,color="#4ebaaf")+
+    geom_line(linewidth=0.8,color="#21908CFF")+
+    geom_point(size=3,color="#21908CFF")+
     scale_x_continuous(n.breaks = length(unique(data$year)))+
     facet_wrap(~ factor(Country,level=facet_order$Country),scales="free") +
     labs(title = paste("Landings by country -", species) )+
@@ -3076,7 +3076,7 @@ plot_land_byfleet_byseason <- function(data,cst_scale = T){
     geom_point(size=3)+
     facet_wrap(~ factor(fleet_isis,level=facet_order$fleet_isis),scales="free") +
     scale_x_continuous(breaks = unique(data$year))+
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                        labels = c("ref", "sim")) +
     labs(title = "Landings by fleet")+
     xlab(label = "Year")+
@@ -3103,7 +3103,7 @@ plot_land_byfleet_byyear <- function(data,cst_scale = T){
     geom_point(size=3)+
     facet_wrap(~ factor(fleet_isis,level=facet_order$fleet_isis),scales="free") +
     scale_x_continuous(n.breaks = length(unique(data$year)))+
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                        labels = c("ref", "sim")) +
     labs(title = "Landings by fleet")+
     xlab(label = "Year")+
@@ -3147,7 +3147,7 @@ plot_land_bymetier_byfleet_byseason <- function(data,cst_scale = T){
       geom_line(linewidth=0.8) +
       geom_point(size=3) +
       scale_x_continuous(breaks = years)+
-      scale_color_manual(values = c("#006c86", "#4ebaaf"),
+      scale_color_manual(values = c("#440154FF", "#21908CFF"),
                          labels = c("ref", "sim")) +
       labs(title = unique(data$fleet_isis)) +
       xlab(label = "Years")+
@@ -3238,7 +3238,7 @@ plot_land_bymetier_byfleet_byyear <- function(data,cst_scale = T){
       geom_line(linewidth=0.8) +
       geom_point(size=3) +
       scale_x_continuous(breaks = years)+
-      scale_color_manual(values = c("#006c86", "#4ebaaf"),
+      scale_color_manual(values = c("#440154FF", "#21908CFF"),
                          labels = c("ref", "sim")) +
       labs(title = unique(data$fleet_isis)) +
       xlab(label = "Years")+
@@ -3344,13 +3344,13 @@ plot_land_bymetier_byseason <- function(data,main_metier,species,cst_scale = T){
     geom_point(size=3)+
     scale_x_continuous(breaks = years)+
     facet_wrap(~ factor(metier_isis,level=met_order$metier_isis), scales = "free") +
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                       labels = c("ref", "sim")) +
     labs(title = paste("Landings profile by metier (main metiers) -", species))+
     xlab(label = "Year")+
     ylab(label="Landings (prop.)")+
     theme_bw()+
-    theme(plot.title = element_text(color="#006c86",face="bold"),
+    theme(plot.title = element_text(color="#440154FF",face="bold"),
           axis.text.x=element_text(angle = 45 ),
           legend.title = element_blank())
   
@@ -3472,15 +3472,15 @@ plot_land_bymetier_byseason_proj <- function(data,main_metier,species,cst_scale 
     distinct()
   
   fig <- ggplot(data_main, aes(x = year, y = sim)) +
-    geom_line(linewidth=0.8,color="#4ebaaf")+
-    geom_point(size=3,color="#4ebaaf")+
+    geom_line(linewidth=0.8,color="#21908CFF")+
+    geom_point(size=3,color="#21908CFF")+
     scale_x_continuous(breaks = years)+
     facet_wrap(~ factor(metier_isis,level=met_order$metier_isis), scales = "free") +
     labs(title = paste("Landings profile by metier (main metiers) -", species))+
     xlab(label = "Year")+
     ylab(label="Landings (prop.)")+
     theme_bw()+
-    theme(plot.title = element_text(color="#006c86",face="bold"),
+    theme(plot.title = element_text(color="#440154FF",face="bold"),
           axis.text.x=element_text(angle = 45 ),
           legend.title = element_blank())
   
@@ -3500,8 +3500,8 @@ plot_land_bymetier_byseason_proj <- function(data,main_metier,species,cst_scale 
     
     
     fig <- ggplot(data_new, aes(x = year, y = sim)) +
-      geom_line(linewidth=0.8,color="#4ebaaf") +
-      geom_point(size=3,color="#4ebaaf") +
+      geom_line(linewidth=0.8,color="#21908CFF") +
+      geom_point(size=3,color="#21908CFF") +
       scale_x_continuous(breaks = years)+
       scale_color_manual(values = c("darkgrey", "grey"),
                          labels = c("ref", "sim")) +
@@ -3595,13 +3595,13 @@ plot_land_bymetier_byyear <- function(data,main_metier,species,cst_scale = T){
     geom_point(size=3)+
     scale_x_continuous(breaks = unique(data$year))+
     facet_wrap(~ factor(metier_isis,level=met_order$metier_isis), scales = "free") +
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                       labels = c("ref", "sim")) +
     labs(title = paste("Landings profile by metier (main metiers) -", species))+
     xlab(label = "Year")+
     ylab(label="Landings (prop.)")+
     theme_bw() +
-    theme(plot.title = element_text(color="#006c86",face="bold"),
+    theme(plot.title = element_text(color="#440154FF",face="bold"),
           axis.text.x=element_text(angle = 45, hjust = 1),
           legend.title = element_blank())
   
@@ -3693,7 +3693,7 @@ plot_land_byseason <- function(data,species){
   fig <- ggplot(data, aes(x = year, y = value, color=data_type)) +
     geom_line(linewidth=0.8)+
     geom_point(size=3)+
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                       labels = c("ref", "sim")) +
     labs(title = paste("Landings by season -", species) )+
     xlab(label = "Year")+
@@ -3724,8 +3724,8 @@ plot_land_byseason_proj <- function(data,species){
   
   
   fig <- ggplot(data, aes(x = year, y = sim)) +
-    geom_line(linewidth=0.8,color="#4ebaaf")+
-    geom_point(size=3,color="#4ebaaf")+
+    geom_line(linewidth=0.8,color="#21908CFF")+
+    geom_point(size=3,color="#21908CFF")+
     labs(title = paste("Landings by season -", species) )+
     xlab(label = "Year")+
     ylab(label="Landings (prop.)")+
@@ -3761,7 +3761,7 @@ plot_land_byspecies_byfleet_byseason <- function(data,this_fleet){
     geom_point(size=3)+
     scale_x_continuous(breaks = unique(data$year))+
     facet_wrap(~ species, scales = "free") +
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                        labels = c("ref", "sim")) +
     labs(title = unique(this_fleet))+
     xlab(label = "Year")+
@@ -3789,7 +3789,7 @@ plot_land_byspecies_byfleet_byyear <- function(data,this_fleet){
     geom_point(size=3)+
     scale_x_continuous(breaks = unique(data$year))+
     facet_wrap(~ species, scales = "free") +
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                        labels = c("ref", "sim")) +
     labs(title = unique(this_fleet))+
     xlab(label = "Year")+
@@ -3923,7 +3923,7 @@ plot_N_agegroup <- function(data,species){
       geom_point(size=3)+
       scale_x_continuous(n.breaks = length(unique(data$year)))+
       facet_wrap(~age, scales = "free") +
-      scale_color_manual(values = c("#006c86", "#4ebaaf"),
+      scale_color_manual(values = c("#440154FF", "#21908CFF"),
                         labels = c("ref", "sim")) +
       labs(title = paste("Abundance by age group -", species) )+
       xlab(label = "Year")+
@@ -3957,8 +3957,8 @@ plot_N_agegroup_proj <- function(data,species){
     
     
     fig <- ggplot(data_new, aes(x = year, y = sim)) +
-      geom_line(linewidth=0.8,color="#4ebaaf")+
-      geom_point(size=3,color="#4ebaaf")+
+      geom_line(linewidth=0.8,color="#21908CFF")+
+      geom_point(size=3,color="#21908CFF")+
       scale_x_continuous(n.breaks = length(unique(data$year)))+
       facet_wrap(~age, scales = "free") +
       labs(title = paste("Abundance by age group -", species) )+
@@ -3997,7 +3997,7 @@ plot_N_agegroup_merluccius <- function(data,species){
     fig <- ggplot(data_new, aes(x = as.character(year), y = value, fill= data_type)) +
       stat_summary(fun = "sum", geom = "bar", position = "dodge") +
       facet_wrap(~ factor(age,level=facet_order), scales = "free") +
-      scale_fill_manual(values = c("#006c86", "#4ebaaf"),
+      scale_fill_manual(values = c("#440154FF", "#21908CFF"),
                         labels = c("ref", "sim")) +
       labs(title = paste("Abundance by age group -", species) )+
       xlab(label = "Year")+
@@ -4020,7 +4020,7 @@ plot_N_total <- function(data,species){
     geom_line(linewidth=0.8)+
     geom_point(size=3)+
     scale_x_continuous(n.breaks = length(unique(data$year)))+
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                        labels = c("ref", "sim")) +
     labs(title = paste("Total abundance by year -", species) )+
     xlab(label = "Year")+
@@ -4041,9 +4041,9 @@ plot_N_total <- function(data,species){
 
 plot_N_total_proj <- function(data,species){
   
-  fig <- ggplot(data, aes(x = year, y = sim), color="#4ebaaf") +
-    geom_line(linewidth=0.8,color="#4ebaaf")+
-    geom_point(size=3,color ="#4ebaaf")+
+  fig <- ggplot(data, aes(x = year, y = sim), color="#21908CFF") +
+    geom_line(linewidth=0.8,color="#21908CFF")+
+    geom_point(size=3,color ="#21908CFF")+
     scale_x_continuous(n.breaks = length(unique(data$year)))+
     labs(title = paste("Total abundance by year -", species) )+
     xlab(label = "Year")+
@@ -4255,32 +4255,36 @@ plot_radar_synthesis_fleet2 <- function(data,metrics=c("AE","RwMSE","r","MEF"),g
     par(cex=0.3,mar = c(14, 4, 4, 2))
     fig <- radarchart(this_data,
                       seg = 4,                    
-                      axistype = 4,
-                      pcol=c("red",rep("darkblue",nrow(this_data)-6),"blue",rep("transparent",2)),
-                      plwd=c(2,rep(1,nrow(this_data)-6),2,rep(0.1,2)),
+                      axistype = 0,
+                      pcol=c(rocket(length(groups)+2)[i+1],
+                             rep("black",nrow(this_data)-6),
+                             mako(length(groups)+2)[i+1],
+                             rep("transparent",2)),
+                      plwd=c(4,rep(1.5,nrow(this_data)-6),4,rep(0.1,2)),
                       pfcol=c(rep("transparent",nrow(this_data)-4),rep(fill_col,2)),
                       plty=1,
                       vlcex=4,
+                      cglcol = "grey60",
+                      axislabcol = "grey20",
                       calcex=1.5,
                       centerzero = FALSE,
                       title=paste0(mod," - ",groups[i]),
-                      cex.main=2)       
-    
+                      cex.main=3)       
     legend(
-      x = "bottomright", 
-      legend = rownames(this_data[c(3,nrow(this_data)-2,nrow(this_data)-1,nrow(this_data)),]), 
+      x = "bottom",
+      legend = rownames(this_data[c(3,nrow(this_data)-2),]),
       horiz = F,
       bty="n",
-      pch = c(NA,NA,20,20) , 
-      lty= c(1,1,NA,NA), 
-      col = c("red", "blue","orange",fill_col),
-      text.col = "black", 
-      cex = 5, 
-      pt.cex = 6,
+      lty= c(1,1),
+      col = c(rocket(length(groups)+2)[i+1], 
+              mako(length(groups)+2)[i+1]),
+      text.col = "black",
+      cex = 4,
+      pt.cex = 5,
+      lwd = c(4,4),
       xpd = TRUE ,
-      inset = c(0, -0.15)
-    )
-    
+      inset = c(0, -0.25)
+      )
   }
 }
 
@@ -4412,12 +4416,14 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
   fig <- radarchart(Data,
                     seg = 4,                    
                     axistype = 4,
-                    pcol=c("red",rep("darkblue",nrow(Data)-6),"blue",rep("transparent",2)),
-                    plwd=c(2,rep(1,nrow(Data)-6),2,rep(0.1,2)),
+                    pcol=c("#CB1B4FFF",rep("grey40",nrow(Data)-6),"#357BA2FF",rep("transparent",2)),
+                    plwd=c(3,rep(1.2,nrow(Data)-6),3,rep(0.1,2)),
                     pfcol=c(rep("transparent",nrow(Data)-4),rep(fill_col,2)),
+                    cglcol = "grey60",
+                    axislabcol = "grey20",
                     plty=1,
                     vlcex=4,
-                    calcex=1.5,
+                    calcex=2,
                     centerzero = FALSE,
                     title=mod,
                     cex.main=2)       
@@ -4429,7 +4435,8 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
     bty="n",
     pch = c(NA,NA,20,20) , 
     lty= c(1,1,NA,NA),
-    col = c("red", "blue","orange",fill_col),
+    col = c("#A11A5BFF", "#357BA2FF","orange",fill_col),
+    lwd = c(3,3,0,0),
     text.col = "black", 
     cex = 3, 
     pt.cex = 6,
@@ -4443,7 +4450,7 @@ plot_recruit <- function(data,species){
   
   fig <- ggplot(data, aes(x = year, y = rec_n,fill=data_type)) +
     stat_summary(fun = "sum", geom = "bar", width=0.2) +
-    scale_fill_manual(values = c("#006c86","#4ebaaf")) +
+    scale_fill_manual(values = c("#440154FF","#21908CFF")) +
     labs(title = paste("Recruitment", species) )+
     xlab(label = "Year")+
     ylab(label="Recruitment (ind.)")+
@@ -4460,7 +4467,7 @@ plot_SSB <- function(data,species){
     geom_line(linewidth=0.8)+
     geom_point(size=3)+
     scale_x_continuous(n.breaks = length(unique(data$year)))+
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                       labels = c("ref", "sim")) +
     labs(title = paste("SSB by year -", species) )+
     xlab(label = "Year")+
@@ -4474,8 +4481,8 @@ plot_SSB <- function(data,species){
 plot_SSB_proj <- function(data,species){
   
   fig <- ggplot(data, aes(x = year, y = sim)) +
-    geom_line(linewidth=0.8,color="#4ebaaf")+
-    geom_point(size=3,color="#4ebaaf")+
+    geom_line(linewidth=0.8,color="#21908CFF")+
+    geom_point(size=3,color="#21908CFF")+
     scale_x_continuous(n.breaks = length(unique(data$year)))+
     labs(title = paste("SSB by year -", species) )+
     xlab(label = "Year")+
@@ -4495,7 +4502,7 @@ plot_SSB_allSpp <- function(data){
     geom_line(linewidth=0.8)+
     geom_point(size=3)+
     scale_x_continuous(n.breaks = length(unique(data$year)))+
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                        labels = c("ref", "sim")) +
     xlab(label = "Year")+
     ylab(label="SSB (kg)")+
@@ -4512,7 +4519,7 @@ plot_tseries_y <- function(data,species,metrics){
     geom_line(linewidth=0.8)+
     geom_point(size=3)+
     scale_x_continuous(n.breaks = length(unique(data$year)))+
-    scale_color_manual(values = c("#006c86", "#4ebaaf"),
+    scale_color_manual(values = c("#440154FF", "#21908CFF"),
                        labels = c("ref", "sim")) +
     labs(title = species)+
     xlab(label = "Year")+
