@@ -2840,24 +2840,24 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
   # plot model skills as a heat map for one year (with  thresholds)
   mod <- unique(data$mod)
   
-  quality_level <- case_when(metrics %in% c("MEF","r") ~ c("Poor:",
-                                                           "        ",
-                                                           "Acceptable:",
-                                                           "                   ",
-                                                           "Good:",
-                                                           "          "),
-                             metrics == "RwMSE" ~ c("Good:",
-                                                    "          ",
-                                                    "Acceptable:",
-                                                    "                    ",
-                                                    "Poor:",
-                                                    "        "),
-                             metrics == "AE" ~ c("Poor:",
-                                                 "Acceptable:",
-                                                 "Good:",
-                                                 "Good:",                                                 
-                                                 "Acceptable:",
-                                                 "Poor:"))
+  quality_level <- case_when(metrics %in% c("MEF","r") ~ c("°",
+                                                           " ",
+                                                           "*",
+                                                           " ",
+                                                           "**",
+                                                           "  "),
+                             metrics == "RwMSE" ~ c("**",
+                                                    "  ",
+                                                    "*",
+                                                    "  ",
+                                                    "°",
+                                                    " "),
+                             metrics == "AE" ~ c("°",
+                                                 "*",
+                                                 "**",
+                                                 "**",                                                 
+                                                 "*",
+                                                 "°"))
   
   thresh_order <- c(paste(quality_level[1],metrics,"<",thresh[1]),
                     paste(quality_level[2],thresh[1],"<",metrics,"<",thresh[2]),
@@ -2891,20 +2891,12 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
                         thresh[4] < eval(parse(text = metrics)) & eval(parse(text = metrics)) <= thresh[5] ~ thresh_order[5],
                         thresh[5] < eval(parse(text = metrics)) ~ thresh_order[6])) 
   
-  if(metrics %in% c("RwMSE","AAE")){
-    if(sym){
-      fill_colors <- rev(brewer.pal(n=6,name="BrBG"))
-    }else{
-      fill_colors <- brewer.pal(n=6,name="Oranges")
-    }
-    
-  } else {
-    if(sym){
-      fill_colors <- rev(brewer.pal(n=6,name="BrBG"))
-    }else{
-      fill_colors <- rev(brewer.pal(n=6,name="Oranges"))
-    }
-    
+  if(metrics %in% c("RwMSE")){
+    fill_colors <- viridis(6,direction=-1)
+  } else if (metrics %in% c("MEF","r")){
+    fill_colors <- viridis(6)
+  }else{
+    fill_colors <- turbo(6)
   }
   
   text_colors <- Data %>% 
@@ -2980,19 +2972,20 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
          fill=metrics)+
     xlab("Variables")+
     ylab(Ytitle) +
-    theme(axis.text.x = element_text(size = 14,
+    theme(axis.text.x = element_text(size = 18,
                                      angle = 60, 
                                      vjust = 0.9, 
                                      hjust= 0.9,
                                      color=text_colors$color),
           title =element_text(size=8),
-          axis.text.y = element_text(size=12),
+          axis.text.y = element_text(size=16),
           axis.title.x = element_text(size=18),
           axis.title.y = element_text(size=18),
-          strip.text.x = element_text(size = 13),
-          strip.text.y = element_text(size = 13),
-          legend.text = element_text(size=12),
-          legend.title = element_text(size=16),
+          strip.text.x = element_text(size = 14),
+          strip.text.y = element_text(size = 14),
+          legend.text = element_text(size=16),
+          legend.title = element_text(size=0),
+          legend.position = "bottom",
           panel.background = element_rect(fill = "darkgrey",
                                           colour = "black",
                                           linetype = "solid"),
@@ -4544,7 +4537,7 @@ save_last_heatmaps <- function(name,path,by_fleet){
                        paste0(path,"/by_fleet/"),
                        paste0(path,"/by_species/"))
   ggsave(filename = paste0(full_path,name,".png"),
-         height = if_else(by_fleet,2700,1470),
+         height = if_else(by_fleet,3200,1470),
          width = 2900,#2415,
          units = "px")
   
