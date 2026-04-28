@@ -4224,9 +4224,10 @@ plot_radar_synthesis_fleet2 <- function(data,metrics=c("AE","RwMSE","r","MEF"),g
       mutate(S=sum(c_across(eval(metrics)[1]:eval(metrics)[length(metrics)]))) %>%
       arrange(S) %>%
       ungroup() %>%
-      select(-c(S,group))%>%
-      rbind(Thresh) %>%
-      as.data.frame()
+      select(-c(S,group))
+    
+    this_data <- rbind(Thresh,this_data) %>% as.data.frame()
+    
     this_order <- this_data$fleet_isis
     
     Fleet_names <- this_data$fleet_isis
@@ -4249,34 +4250,33 @@ plot_radar_synthesis_fleet2 <- function(data,metrics=c("AE","RwMSE","r","MEF"),g
     fig <- radarchart(this_data,
                       seg = 4,                    
                       axistype = 0,
-                      pcol=c(rocket(length(groups)+2)[i+1],
-                             rep("black",nrow(this_data)-6),
-                             mako(length(groups)+2)[i+1],
-                             rep("transparent",2)),
-                      plwd=c(4,rep(1.5,nrow(this_data)-6),4,rep(0.1,2)),
-                      pfcol=c(rep("transparent",nrow(this_data)-4),rep(fill_col,2)),
+                      pcol=c(rep("transparent",2),
+                             rocket(length(groups)+2)[i+1],
+                             rep("grey40",nrow(this_data)-6),
+                             mako(length(groups)+2)[length(groups)+2-i]),
+                      plwd=c(rep(0.1,2),4,rep(1.5,nrow(this_data)-6),4),
+                      pfcol=c(rep(fill_col,2),rep("transparent",nrow(this_data)-4)),
                       plty=1,
                       vlcex=4,
                       cglcol = "grey60",
-                      axislabcol = "grey20",
                       calcex=1.5,
                       centerzero = FALSE,
                       title=paste0(mod," - ",groups[i]),
                       cex.main=3)       
     legend(
       x = "bottom",
-      legend = rownames(this_data[c(3,nrow(this_data)-2),]),
+      legend = rownames(this_data[c(5,nrow(this_data)),]),
       horiz = F,
       bty="n",
       lty= c(1,1),
       col = c(rocket(length(groups)+2)[i+1], 
-              mako(length(groups)+2)[i+1]),
+              mako(length(groups)+2)[length(groups)+2-i]),
       text.col = "black",
-      cex = 4,
+      cex = 3.5,
       pt.cex = 5,
       lwd = c(4,4),
       xpd = TRUE ,
-      inset = c(0, -0.25)
+      inset = c(0, -0.18)
       )
   }
 }
@@ -4415,7 +4415,7 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
                     cglcol = "grey60",
                     axislabcol = "grey20",
                     plty=1,
-                    vlcex=4,
+                    vlcex=3,
                     calcex=2,
                     centerzero = FALSE,
                     title=mod,
@@ -4434,7 +4434,7 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
     cex = 3, 
     pt.cex = 6,
     xpd = TRUE ,
-    inset = c(0, -0.1)
+    inset = c(0, -0.07)
   )
 
 }
