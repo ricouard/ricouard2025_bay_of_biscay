@@ -2927,18 +2927,42 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
                             fill= factor(gp, level = thresh_order)))+
       facet_grid(factor(fleet_group,levels = c("FR >12","Foreign","FR <12")) ~ period,
                  scales='free',
-                 space = 'free_y')
+                 space = 'free_y')+
+      geom_tile() +
+      scale_fill_manual(values = fill_colors,
+                        breaks=thresh_order)+
+      labs(title = paste(mod,metrics),
+           fill=metrics)+
+      xlab("Variables")+
+      ylab(Ytitle) +
+      theme(axis.text.x = element_text(size = 22,
+                                       angle = 60, 
+                                       vjust = 0.9, 
+                                       hjust= 0.9,
+                                       color=text_colors$color),
+            title =element_text(size=6),
+            axis.text.y = element_text(size=18),
+            axis.title.x = element_text(size=22),
+            axis.title.y = element_text(size=22),
+            strip.text.x = element_text(size = 18),
+            strip.text.y = element_text(size = 18),
+            legend.position = "none",
+            panel.background = element_rect(fill = "darkgrey",
+                                            colour = "black",
+                                            linetype = "solid"),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())
     
   }else{
     
     Data <- Data %>%
-      mutate(species = case_when(species == 'Solea_solea' ~ 'SOL',
-                                 species == 'Raja_clavata' ~ 'RJC',
-                                 species == 'Nephrops_norvegicus' ~ 'NEP',
-                                 species == 'Merluccius_merluccius' ~ 'HKE',
-                                 species == 'Lophius_piscatorius' ~ 'MON',
-                                 species == 'Leucoraja_naevus'  ~ 'RJN',
-                                 species == 'Lepidorhombus_whiffiagonis' ~ 'MEG',
+      mutate(species = case_when(species == 'Solea_solea' ~ 'Sole',
+                                 species == 'Raja_clavata' ~ 'Thornback skate',
+                                 species == 'Nephrops_norvegicus' ~ 'Norway lobster',
+                                 species == 'Merluccius_merluccius' ~ 'Hake',
+                                 species == 'Lophius_piscatorius' ~ 'Anglerfish',
+                                 species == 'Leucoraja_naevus'  ~ 'Cuckoo skate',
+                                 species == 'Lepidorhombus_whiffiagonis' ~ 'Megrim',
                                  !species %in% c('Solea_solea',
                                                  'Raja_clavata',
                                                  'Nephrops_norvegicus',
@@ -2960,39 +2984,37 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
     Ytitle <- "Species"
     
     fig <- ggplot(Data, aes(x=factor(qty,level = text_colors$qty), y=factor(species,level = spp_order), fill= factor(gp, level = thresh_order)))+
-      facet_wrap(~period)
+      facet_wrap(~period)+
+      geom_tile() +
+      scale_fill_manual(values = fill_colors,
+                        breaks=thresh_order)+
+      labs(title = paste(mod,metrics),
+           fill=metrics)+
+      xlab("Variables")+
+      ylab(Ytitle) +
+      theme(axis.text.x = element_text(size = 18,
+                                       angle = 60, 
+                                       vjust = 0.9, 
+                                       hjust= 0.9,
+                                       color=text_colors$color),
+            title =element_text(size=8),
+            axis.text.y = element_text(size=16),
+            axis.title.x = element_text(size=22),
+            axis.title.y = element_text(size=22),
+            strip.text.x = element_text(size = 18),
+            strip.text.y = element_text(size = 18),
+            legend.text = element_text(size=16),
+            legend.title = element_text(size=0),
+            legend.position = "bottom",
+            panel.background = element_rect(fill = "darkgrey",
+                                            colour = "black",
+                                            linetype = "solid"),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())
     
   }
   
-  fig <- fig+
-    geom_tile() +
-    scale_fill_manual(values = fill_colors,
-                      breaks=thresh_order)+
-    labs(title = paste(mod,metrics),
-         fill=metrics)+
-    xlab("Variables")+
-    ylab(Ytitle) +
-    theme(axis.text.x = element_text(size = 18,
-                                     angle = 60, 
-                                     vjust = 0.9, 
-                                     hjust= 0.9,
-                                     color=text_colors$color),
-          title =element_text(size=8),
-          axis.text.y = element_text(size=16),
-          axis.title.x = element_text(size=18),
-          axis.title.y = element_text(size=18),
-          strip.text.x = element_text(size = 14),
-          strip.text.y = element_text(size = 14),
-          legend.text = element_text(size=16),
-          legend.title = element_text(size=0),
-          legend.position = "bottom",
-          panel.background = element_rect(fill = "darkgrey",
-                                          colour = "black",
-                                          linetype = "solid"),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank())
-  
-  
+ 
   
   return(fig)
 }
@@ -3687,7 +3709,7 @@ plot_land_byseason <- function(data,species){
     geom_line(linewidth=0.8)+
     geom_point(size=3)+
     scale_color_manual(values = c("#440154FF", "#21908CFF"),
-                      labels = c("ref", "sim")) +
+                      labels = c("reference", "simulation")) +
     labs(title = paste("Landings by season -", species) )+
     xlab(label = "Year")+
     ylab(label="Landings (prop.)")+
@@ -3702,6 +3724,7 @@ plot_land_byseason <- function(data,species){
           axis.title.y = element_text(size=28),
           legend.title = element_blank(),
           legend.text = element_text(size=20),
+          legend.position="bottom"
           )
   
   
@@ -3803,11 +3826,8 @@ plot_land_byspecies_byfleet_byyear <- function(data,this_fleet){
 
 plot_mean_access <- function(species,access_path){
   # access_path: the path where the csv files of accessibility are stored
-  
-  Colors <- c(brewer.pal(5, "Oranges")[2],
-              brewer.pal(5, "Oranges")[3],
-              brewer.pal(5, "Oranges")[4],
-              brewer.pal(5, "Oranges")[5])
+  library(viridis)
+  Colors <- cividis(5)[1:4]
   
   file <- paste0(access_path,"/",species,"/MeanAcc_",species,".csv")
   
@@ -3825,22 +3845,24 @@ plot_mean_access <- function(species,access_path){
       mutate(sex=if_else(group<=34,"Male","Female"))
     
     fig <- ggplot(data,aes(x = group,y= value,color=season))+
-      geom_point(size=3)+
+      geom_point(size=2)+
       geom_line(aes(x = group,y= value,color=season,group=season),
                 linetype='dotted',
-                linewidth=1)+
+                linewidth=0.7)+
       facet_wrap(~factor(sex,levels = c("Male","Female")),nrow = 2)+
       scale_color_manual(values=Colors)+
+      scale_y_continuous(breaks=c(0,0.6))+
       labs(title = species)+
-      ylab(label='Mean accessibility')+
+      ylab(label='q value')+
       theme_classic()+
-      theme(title=element_text(size=18),
-            axis.text.x = element_text(size=18),
-            axis.text.y = element_text(size=18),
-            axis.title.x = element_text(size=20),
+      theme(title=element_text(size=10),
+            axis.text.x = element_text(size=20),
+            axis.text.y = element_text(size=20),
+            axis.title.x = element_text(size=14),
             axis.title.y = element_text(size=22),
             strip.text.x = element_text(size = 18),
-            legend.text = element_text(size=18),
+            legend.text = element_text(size=14),
+            legend.title = element_text(size=14,face = "bold"),
             legend.position = "bottom")
     
     
@@ -3863,18 +3885,23 @@ plot_mean_access <- function(species,access_path){
                 linewidth=1)+
       scale_color_manual(values=Colors)+
       labs(title = species)+
-      ylab(label='Mean accessibility')+
+      ylab(label='q value')+
       theme_classic()+
-      theme(title=element_text(size=18),
-            axis.text.x = element_text(size=18),
-            axis.text.y = element_text(size=18),
-            axis.title.x = element_text(size=20),
+      theme(title=element_text(size=10),
+            axis.text.x = element_text(size=20),
+            axis.text.y = element_text(size=20),
+            axis.title.x = element_text(size=22),
             axis.title.y = element_text(size=22),
             legend.text = element_text(size=18),
-            legend.title = element_text(size=22,face = "bold"),
+            legend.title = element_text(size=18,face = "bold"),
             legend.position = "bottom")
     
   }
+  
+  ggsave(filename = paste0(here(),"/saved_plots/q_estim/",substr(species,1,3),"_season.png"),
+         height = 960,
+         width = 1980,
+         units = "px")
   
   return(fig)
   
@@ -4295,13 +4322,13 @@ plot_radar_synthesis_spp <- function(data,w_ratio,low_var,high_var,metrics=c("AE
   # prepare data
   Data <- data %>%
     select(species,qty,eval(metrics)) %>%
-    mutate(species=case_when(species == "Lepidorhombus_whiffiagonis" ~ "MEG",
-                             species == "Solea_solea" ~ "SOL",
-                             species == "Lophius_piscatorius" ~ "MON",
-                             species == "Nephrops_norvegicus" ~ "NEP",
-                             species == "Merluccius_merluccius" ~ "HKE",
-                             species == "Raja_clavata" ~ "RJC",
-                             species == "Leucoraja_naevus" ~ "RJN"))%>%
+    mutate(species=case_when(species == "Lepidorhombus_whiffiagonis" ~ "Megrim",
+                             species == "Solea_solea" ~ "Sole",
+                             species == "Lophius_piscatorius" ~ "Anglerfish",
+                             species == "Nephrops_norvegicus" ~ "Norway lobster",
+                             species == "Merluccius_merluccius" ~ "Hake",
+                             species == "Raja_clavata" ~ "Thornback skate",
+                             species == "Leucoraja_naevus" ~ "Cuckoo skate"))%>%
     pivot_longer(eval(metrics),names_to = 'metrics') %>%
     na.omit() %>%
     mutate(value = case_when(metrics =='AE' ~ if_else(abs(value)<1,1-abs(value),0),
@@ -4363,13 +4390,13 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
   
   Data <- data %>%
     select(species,qty,eval(metrics)) %>%
-    mutate(species=case_when(species == "Lepidorhombus_whiffiagonis" ~ "MEG",
-                             species == "Solea_solea" ~ "SOL",
-                             species == "Lophius_piscatorius" ~ "MON",
-                             species == "Nephrops_norvegicus" ~ "NEP",
-                             species == "Merluccius_merluccius" ~ "HKE",
-                             species == "Raja_clavata" ~ "RJC",
-                             species == "Leucoraja_naevus" ~ "RJN"))%>%
+    mutate(species=case_when(species == "Lepidorhombus_whiffiagonis" ~ "Megrim",
+                             species == "Solea_solea" ~ "Sole",
+                             species == "Lophius_piscatorius" ~ "Anglerfish",
+                             species == "Nephrops_norvegicus" ~ "Norway lobster",
+                             species == "Merluccius_merluccius" ~ "Hake",
+                             species == "Raja_clavata" ~ "Thornback skate",
+                             species == "Leucoraja_naevus" ~ "Cuckoo skate"))%>%
     pivot_longer(eval(metrics),names_to = 'metrics') %>%
     na.omit() %>%
     mutate(value = case_when(metrics =='AE' ~ if_else(abs(value)<1,1-abs(value),0),
@@ -4415,24 +4442,25 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
                     cglcol = "grey60",
                     axislabcol = "grey20",
                     plty=1,
-                    vlcex=3,
-                    calcex=2,
+                    vlcex=5,
+                    calcex=3,
                     centerzero = FALSE,
                     title=mod,
                     cex.main=2)       
   
   legend(
-    x = "bottom", 
-    legend = rownames(Data[c(3,nrow(Data)-2,nrow(Data)-1,nrow(Data)),]), 
-    horiz = T,
+    x = "bottomright", 
+    legend = c(rownames(Data[c(3,nrow(Data)-2,nrow(Data)-1,nrow(Data)),]),"Good"), 
+    horiz = F,
     bty="n",
-    pch = c(NA,NA,20,20) , 
-    lty= c(1,1,NA,NA),
-    col = c("#A11A5BFF", "#357BA2FF","orange",fill_col),
-    lwd = c(3,3,0,0),
+    pch = c(NA,NA,22,22,22) , 
+    pt.bg = c(NA,NA,"orange",fill_col,"white"),
+    lty= c(1,1,NA,NA,NA),
+    col = c("#A11A5BFF", "#357BA2FF","orange",fill_col,"grey60"),
+    lwd = c(3,3,0,0,1),
     text.col = "black", 
-    cex = 3, 
-    pt.cex = 6,
+    cex = 5, 
+    pt.cex = 10,
     xpd = TRUE ,
     inset = c(0, -0.07)
   )
