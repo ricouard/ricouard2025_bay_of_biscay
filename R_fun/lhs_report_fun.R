@@ -369,25 +369,26 @@ plot_q_estim <- function(best_set_data,mean_data){
                  size = 2) +
       geom_line(mapping = aes(x = q_num, 
                               y = q, 
-                              color = year),
-                linewidth = 0.6,
-                linetype='dotted') +
+                              color = year,
+                              linetype=year),
+                linewidth = 0.6) +
       facet_wrap(~factor(sex,levels = c("Male","Female")),nrow = 2)+
-      scale_color_manual(values=c(mako(n_year+2)[1:n_year+1],"orange")) +
-      scale_shape_manual(values=c(rep(16,n_year),15)) +
-      scale_y_continuous(breaks=c(0,0.4,0.8))+
+      scale_color_manual(values=c(mako(n_year+3)[1:n_year+2],"black")) +
+      scale_linetype_manual(values=c(rep("dotted",n_year),"solid"))+
+      scale_shape_manual(values=c(rep(1,n_year),16)) +
+      scale_y_continuous(breaks=c(0,0.8))+
       ggtitle(paste("q estimation by population group -", species))+
       xlab("group")+
       ylab("q Value") +
       theme_classic() +
       theme(title=element_text(size=10),
-            axis.text.x = element_text(size=14),
-            axis.text.y = element_text(size=14),
-            axis.title.x = element_text(size=20),
-            axis.title.y = element_text(size=20),
-            strip.text = element_text(size = 14),
-            legend.text = element_text(size=18),
-            legend.title = element_text(size=18,face = "bold"),
+            axis.text.x = element_text(size=20),
+            axis.text.y = element_text(size=20),
+            axis.title.x = element_text(size=14),
+            axis.title.y = element_text(size=24),
+            strip.text = element_text(size = 18),
+            legend.text = element_text(size=14),
+            legend.title = element_text(size=14,face = "bold"),
             legend.position = "bottom")
     
   }else{
@@ -396,24 +397,26 @@ plot_q_estim <- function(best_set_data,mean_data){
       geom_point(mapping = aes(x = q_num, 
                                y = q, 
                                color = year, 
-                               shape = year),
+                               shape = year,
+                               linetype = year),
                  size = 3) +
       geom_line(mapping = aes(x = q_num, 
                               y = q, 
                               color = year),
                 linewidth = 0.8,
                 linetype='dotted') +
-      scale_color_manual(values=c(mako(n_year+2)[1:n_year+1],"orange")) +
-      scale_shape_manual(values=c(rep(16,n_year),15)) +
+      scale_color_manual(values=c(mako(n_year+3)[1:n_year+2],"black")) +
+      scale_linetype_manual(values=c(rep("dotted",n_year),"solid")) +
+      scale_shape_manual(values=c(rep(1,n_year),16)) +
       ggtitle(paste("q estimation by population group -", species))+
       xlab("group")+
       ylab("q Value") +
       theme_classic() +
       theme(title=element_text(size=10),
-            axis.text.x = element_text(size=18),
-            axis.text.y = element_text(size=16),
-            axis.title.x = element_text(size=20),
-            axis.title.y = element_text(size=20),
+            axis.text.x = element_text(size=20),
+            axis.text.y = element_text(size=20),
+            axis.title.x = element_text(size=22),
+            axis.title.y = element_text(size=24),
             legend.text = element_text(size=18),
             legend.title = element_text(size=18,face = "bold"),
             legend.position = "bottom")
@@ -422,7 +425,7 @@ plot_q_estim <- function(best_set_data,mean_data){
   
   ggsave(filename = paste0(here(),"/saved_plots/q_estim/",substr(species,1,3),"_year.png"),
          height = 960,
-         width = 1920,
+         width = 1980,
          units = "px")
   
   
