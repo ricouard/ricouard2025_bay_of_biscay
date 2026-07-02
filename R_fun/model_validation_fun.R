@@ -782,7 +782,7 @@ skills_summary <- function(mod_list,run_list,qty_list,path,by_fleet=F,by_period=
       # weighted RwMSE
       mutate(RwMSE=sqrt(sum(r.err2*wt))) %>%
       # Average error (bias)
-      mutate(AE = mean(r.err)) %>%
+      mutate(ARE = mean(r.err)) %>%
       # correlation coefficient
       mutate(r = cor(sim,obs)) %>%
       # Modelling efficiency
@@ -797,20 +797,20 @@ skills_summary <- function(mod_list,run_list,qty_list,path,by_fleet=F,by_period=
     if(by_fleet & by_period){
       this_data <- this_data %>%
         mutate(period = if_else(year <= 2018,1,2)) %>%
-        select(period,fleet_isis,mod,run,qty,SR,AE,AAE,RwMSE,r,MEF) %>%
+        select(period,fleet_isis,mod,run,qty,SR,ARE,AAE,RwMSE,r,MEF) %>%
         distinct()
     }else if((!by_fleet) & by_period) {
       this_data <- this_data %>%
         mutate(period = if_else(year <= 2018,1,2)) %>%
-        select(period,species,mod,run,qty,SR,AE,AAE,RwMSE,r,MEF) %>%
+        select(period,species,mod,run,qty,SR,ARE,AAE,RwMSE,r,MEF) %>%
         distinct()
     }else if(by_fleet & (!by_period)){
       this_data <- this_data %>%
-        select(year,fleet_isis,mod,run,qty,SR,AE,AAE,RwMSE,r,MEF) %>%
+        select(year,fleet_isis,mod,run,qty,SR,ARE,AAE,RwMSE,r,MEF) %>%
         distinct()
     }else{
       this_data <- this_data %>%
-        select(year,species,mod,run,qty,SR,AE,AAE,RwMSE,r,MEF) %>%
+        select(year,species,mod,run,qty,SR,ARE,AAE,RwMSE,r,MEF) %>%
         distinct()
     }
     
@@ -2605,7 +2605,7 @@ plot_heatmap_imp_thresh <- function(data,metrics,from,to,thresh=c(-0.1,-0.01,0.0
     select(species,qty,mod,eval(metrics)) %>%
     pivot_wider(names_from = mod, values_from = eval(metrics)) %>%
     mutate(met=metrics) %>%
-    mutate(diff = if_else(met %in% c("RwMSE","AAE","AE"),
+    mutate(diff = if_else(met %in% c("RwMSE","AAE","ARE"),
                           mod_init-mod_fin,
                           mod_fin-mod_init)) %>%
     mutate(gp=case_when(diff <= thresh[1] ~ thresh_order[1],
@@ -2724,7 +2724,7 @@ plot_heatmap_imp_thresh_period <- function(data,metrics,from,to,thresh=c(-0.1,-0
       select(fleet_isis,fleet_group,period,qty,mod,SR,eval(metrics)) %>%
       pivot_wider(names_from = mod, values_from = eval(metrics)) %>%
       mutate(met=metrics) %>%
-      mutate(diff = if_else(met %in% c("RwMSE","AAE","AE"),
+      mutate(diff = if_else(met %in% c("RwMSE","AAE","ARE"),
                             mod_init-mod_fin,
                             mod_fin-mod_init)) %>%
       # mutate(qty = if_else(qty %in% ices_qty,paste(qty,"*"),qty)) %>%
@@ -2778,7 +2778,7 @@ plot_heatmap_imp_thresh_period <- function(data,metrics,from,to,thresh=c(-0.1,-0
       select(species,period,qty,mod,SR,eval(metrics)) %>%
       pivot_wider(names_from = mod, values_from = eval(metrics)) %>%
       mutate(met=metrics) %>%
-      mutate(diff = if_else(met %in% c("RwMSE","AAE","AE"),
+      mutate(diff = if_else(met %in% c("RwMSE","AAE","ARE"),
                             mod_init-mod_fin,
                             mod_fin-mod_init)) %>%
       # mutate(qty = if_else(qty %in% ices_qty,paste(qty,"*"),qty)) %>%
@@ -2841,30 +2841,33 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
   mod <- unique(data$mod)
   
   quality_level <- case_when(metrics %in% c("MEF","r") ~ c("°",
-                                                           " ",
+                                                           "°",
                                                            "*",
-                                                           " ",
+                                                           "*",
                                                            "**",
-                                                           "  "),
+                                                           "**"),
                              metrics == "RwMSE" ~ c("**",
-                                                    "  ",
+                                                    "**",
                                                     "*",
-                                                    "  ",
+                                                    "*",
                                                     "°",
-                                                    " "),
-                             metrics == "AE" ~ c("°",
+                                                    "°"),
+                             metrics =="ARE" ~  c("°",
                                                  "*",
                                                  "**",
-                                                 "**",                                                 
+                                                 "**",
                                                  "*",
                                                  "°"))
   
+
   thresh_order <- c(paste(quality_level[1],metrics,"<",thresh[1]),
                     paste(quality_level[2],thresh[1],"<",metrics,"<",thresh[2]),
                     paste(quality_level[3],thresh[2],"<",metrics,"<",thresh[3]),
                     paste(quality_level[4],thresh[3],"<",metrics,"<",thresh[4]),
                     paste(quality_level[5],thresh[4],"<",metrics,"<",thresh[5]),
                     paste(quality_level[6],thresh[5],"<",metrics))
+  
+  
   
   Data <- data %>%
     mutate(qty = case_when(qty=="abundance_group" ~ 'Abundance/gp.',
@@ -2891,13 +2894,25 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
                         thresh[4] < eval(parse(text = metrics)) & eval(parse(text = metrics)) <= thresh[5] ~ thresh_order[5],
                         thresh[5] < eval(parse(text = metrics)) ~ thresh_order[6])) 
   
+  if(metrics=="ARE") thresh_order <- c(thresh_order[1],
+                                      thresh_order[6],
+                                      thresh_order[2],
+                                      thresh_order[5],
+                                      thresh_order[3],
+                                      thresh_order[4])
+  
+  # color setting
   if(metrics %in% c("RwMSE")){
+    Data <- Data %>% mutate(sisign="none")
     fill_colors <- viridis(6,direction=-1)
   } else if (metrics %in% c("MEF","r")){
+    Data <- Data %>% mutate(sisign="none")
     fill_colors <- viridis(6)
-  }else{
-    fill_colors <- turbo(6)
+  }else if (metrics=="ARE"){
+    Data <- Data %>% mutate(sisign=if_else(ARE>=0,"+","-"))
+    fill_colors <- c(rep(viridis(3)[1],2),rep(viridis(3)[2],2),rep(viridis(3)[3],2))
   }
+  
   
   text_colors <- Data %>% 
     select(qty) %>% 
@@ -2907,7 +2922,7 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
   
   if(by_fleet){
     
-    Data <- Data %>% select(qty,period,fleet_isis,fleet_group,gp) %>% drop_na()
+    Data <- Data %>% select(qty,period,fleet_isis,fleet_group,gp,sisign) %>% drop_na()
     
     # arrange by groups of fleets and importance in landings
     if(is.null(fleet_order)){
@@ -2924,11 +2939,12 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
     
     fig <- ggplot(Data, aes(x=factor(qty,level = text_colors$qty), 
                             y=factor(fleet_isis,level = fleet_order), 
-                            fill= factor(gp, level = thresh_order)))+
+                            fill= factor(gp, level = thresh_order),
+                            shape=sisign))+
       facet_grid(factor(fleet_group,levels = c("FR >12","Foreign","FR <12")) ~ period,
                  scales='free',
                  space = 'free_y')+
-      geom_tile() +
+      geom_tile(color="transparent") +
       scale_fill_manual(values = fill_colors,
                         breaks=thresh_order)+
       labs(title = paste(mod,metrics),
@@ -2953,6 +2969,14 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
             panel.grid.major = element_blank(),
             panel.grid.minor = element_blank())
     
+    if(metrics=="ARE"){
+      fig <- fig +
+        geom_point(size=8,
+                   colour="grey70",
+                   show.legend = F)+
+        scale_shape_manual(values=unique(Data$sisign))
+    }
+    
   }else{
     
     Data <- Data %>%
@@ -2970,8 +2994,7 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
                                                  'Lophius_piscatorius',
                                                  'Leucoraja_naevus',
                                                  'Lepidorhombus_whiffiagonis') ~ species)) %>%
-      mutate(species = str_replace(species,"_"," ")) %>%
-      select(qty,period,species,gp) %>%
+      select(qty,period,species,gp,sisign) %>%
       drop_na()
     
    # arrange 
@@ -2980,14 +3003,20 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
       distinct()
     spp_order <- spp_order$species
     
+    
     # plot
     Ytitle <- "Species"
     
-    fig <- ggplot(Data, aes(x=factor(qty,level = text_colors$qty), y=factor(species,level = spp_order), fill= factor(gp, level = thresh_order)))+
+    fig <- ggplot(Data, 
+                  aes(x=factor(qty,level = text_colors$qty), 
+                      y=factor(species,level = spp_order), 
+                      fill= factor(gp, level = thresh_order),
+                      shape=sisign))+
       facet_wrap(~period)+
-      geom_tile() +
+      geom_tile(color="transparent") +
       scale_fill_manual(values = fill_colors,
                         breaks=thresh_order)+
+      guides(color = "none",shape="legend")+
       labs(title = paste(mod,metrics),
            fill=metrics)+
       xlab("Variables")+
@@ -3011,6 +3040,14 @@ plot_heatmap_thresh_period <- function(data,metrics,thresh=c(0,0.2,0.4,0.8,1),by
                                             linetype = "solid"),
             panel.grid.major = element_blank(),
             panel.grid.minor = element_blank())
+    
+    if(metrics=="ARE"){
+      fig <- fig +
+        geom_point(size=8,
+                   colour="grey70",
+                   show.legend = F)+
+        scale_shape_manual(values=unique(Data$sisign))
+    }
     
   }
   
@@ -4083,7 +4120,7 @@ plot_N_total_proj <- function(data,species){
   
 }
 
-plot_radar_synthesis_fleet <- function(data,w_ratio,low_var,high_var,metrics=c("AE","RwMSE","r","MEF"),groups=c('FR <12','FR >12','Foreign')){
+plot_radar_synthesis_fleet <- function(data,w_ratio,low_var,high_var,metrics=c("ARE","RwMSE","r","MEF"),groups=c('FR <12','FR >12','Foreign')){
   # high_var: observed variables -> high weight
   # low_var: model predicted variable -> low weight
   # w_ratio is: high_var weights/low_var weights
@@ -4106,9 +4143,9 @@ plot_radar_synthesis_fleet <- function(data,w_ratio,low_var,high_var,metrics=c("
                                grepl("0-10",fleet_isis) ~ 'FR <12')) %>%
     pivot_longer(eval(metrics),names_to = 'metrics') %>%
     na.omit() %>%
-    mutate(value = case_when(metrics =='AE' ~ if_else(abs(value)<1,1-abs(value),0),
+    mutate(value = case_when(metrics =='ARE' ~ if_else(abs(value)<1,1-abs(value),0),
                              metrics %in% c('MEF','r') ~ if_else(value <0,0,value),
-                             metrics %in% c('RwMSE','AAE','AE') ~ if_else(value>1,0,1-value))) %>% # remove values too great or too low for facility
+                             metrics %in% c('RwMSE','AAE','ARE') ~ if_else(value>1,0,1-value))) %>% # remove values too great or too low for facility
     mutate(wt = if_else(qty %in% low_var,low_wt,high_wt),
            var_type = if_else(qty %in% low_var,'II','I')) %>%
     group_by(fleet_isis,group,var_type,metrics,wt) %>%
@@ -4203,7 +4240,7 @@ plot_radar_synthesis_fleet <- function(data,w_ratio,low_var,high_var,metrics=c("
   return(plot_list)
 }
 
-plot_radar_synthesis_fleet2 <- function(data,metrics=c("AE","RwMSE","r","MEF"),groups=c('FR <12','FR >12','Foreign')){
+plot_radar_synthesis_fleet2 <- function(data,metrics=c("ARE","RwMSE","r","MEF"),groups=c('FR <12','FR >12','Foreign')){
   # same as previous but only for observed variables
   
   mod <- unique(data$mod)
@@ -4211,7 +4248,7 @@ plot_radar_synthesis_fleet2 <- function(data,metrics=c("AE","RwMSE","r","MEF"),g
   
   # prepare data
   Thresh <- data.frame('fleet_isis'=c('Poor','Acceptable'),
-                       'AE'=c(0.3,0.7),
+                       'ARE'=c(0.3,0.7),
                        'r'=c(0.2,0.6),
                        'RwMSE'=c(0.3,0.7),
                        'MEF'=c(0.2,0.6))
@@ -4227,9 +4264,9 @@ plot_radar_synthesis_fleet2 <- function(data,metrics=c("AE","RwMSE","r","MEF"),g
                                grepl("0-10",fleet_isis) ~ 'FR <12')) %>%
     pivot_longer(eval(metrics),names_to = 'metrics') %>%
     na.omit() %>%
-    mutate(value = case_when(metrics =='AE' ~ if_else(abs(value)<1,1-abs(value),0),
+    mutate(value = case_when(metrics =='ARE' ~ if_else(abs(value)<1,1-abs(value),0),
                              metrics %in% c('MEF','r') ~ if_else(value <0,0,value),
-                             metrics %in% c('RwMSE','AAE','AE') ~ if_else(value>1,0,1-value))) %>% # remove values too great or too low for facility
+                             metrics %in% c('RwMSE','AAE','ARE') ~ if_else(value>1,0,1-value))) %>% # remove values too great or too low for facility
     group_by(fleet_isis,group,metrics) %>%
     summarise(value=mean(value)) %>%
     ungroup() %>%
@@ -4258,16 +4295,16 @@ plot_radar_synthesis_fleet2 <- function(data,metrics=c("AE","RwMSE","r","MEF"),g
     this_order <- this_data$fleet_isis
     
     Fleet_names <- this_data$fleet_isis
-    Max_min <- data.frame('AE'= c(1,0),
+    Max_min <- data.frame('ARE'= c(1,0),
                           'r'= c(1,0),
                           'RwMSE'= c(1,0),
                           'MEF'=c(1,0))
     
     this_data <- rbind(Max_min,this_data[-1])
     
-    names(this_data) <- paste0(c(rep("I(",length(metrics))),
-                               names(this_data),
-                               c(rep(")",length(metrics))))
+    Axis_names <- paste0(c(rep("$I_{",length(metrics))),
+                         names(this_data), 
+                         c(rep("}$",length(metrics))))
     
     row.names(this_data) <- c("max","min",Fleet_names)
     
@@ -4275,6 +4312,7 @@ plot_radar_synthesis_fleet2 <- function(data,metrics=c("AE","RwMSE","r","MEF"),g
     fill_col <- rgb(1.0, 0.647, 0.0, 0.3)
     par(cex=0.3,mar = c(14, 4, 4, 2))
     fig <- radarchart(this_data,
+                      vlabels = TeX(Axis_names),
                       seg = 4,                    
                       axistype = 0,
                       pcol=c(rep("transparent",2),
@@ -4308,7 +4346,7 @@ plot_radar_synthesis_fleet2 <- function(data,metrics=c("AE","RwMSE","r","MEF"),g
   }
 }
 
-plot_radar_synthesis_spp <- function(data,w_ratio,low_var,high_var,metrics=c("AE","RwMSE","r","MEF")){
+plot_radar_synthesis_spp <- function(data,w_ratio,low_var,high_var,metrics=c("ARE","RwMSE","r","MEF")){
   # high_var: observed variables -> high weight
   # low_var: model predicted variable -> low weight
   # w_ratio is: high_var weights/low_var weights
@@ -4331,9 +4369,9 @@ plot_radar_synthesis_spp <- function(data,w_ratio,low_var,high_var,metrics=c("AE
                              species == "Leucoraja_naevus" ~ "Cuckoo skate"))%>%
     pivot_longer(eval(metrics),names_to = 'metrics') %>%
     na.omit() %>%
-    mutate(value = case_when(metrics =='AE' ~ if_else(abs(value)<1,1-abs(value),0),
+    mutate(value = case_when(metrics =='ARE' ~ if_else(abs(value)<1,1-abs(value),0),
                              metrics %in% c('MEF','r') ~ if_else(value <0,0,value),
-                             metrics %in% c('RwMSE','AAE','AE') ~ if_else(value>1,0,1-value))) %>% # remove values too great or too low for facility
+                             metrics %in% c('RwMSE','AAE','ARE') ~ if_else(value>1,0,1-value))) %>% # remove values too great or too low for facility
     mutate(wt = if_else(qty %in% low_var,low_wt,high_wt),
            var_type = if_else(qty %in% low_var,'II','I')) %>%
     group_by(species,var_type,metrics,wt) %>%
@@ -4377,13 +4415,13 @@ plot_radar_synthesis_spp <- function(data,w_ratio,low_var,high_var,metrics=c("AE
   return(fig)
 }
 
-plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")){
+plot_radar_synthesis_spp2 <- function(data,var,metrics=c("ARE","RwMSE","r","MEF")){
   # same as previous but only for observed variables
   mod <- unique(data$mod)
   
   # prepare data
   Thresh <- data.frame('species'=c('Poor','Acceptable'),
-                       'AE'=c(0.3,0.7),
+                       'ARE'=c(0.3,0.7),
                        'r'=c(0.2,0.6),
                        'RwMSE'=c(0.3,0.7),
                        'MEF'=c(0.2,0.6))
@@ -4399,9 +4437,9 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
                              species == "Leucoraja_naevus" ~ "Cuckoo skate"))%>%
     pivot_longer(eval(metrics),names_to = 'metrics') %>%
     na.omit() %>%
-    mutate(value = case_when(metrics =='AE' ~ if_else(abs(value)<1,1-abs(value),0),
+    mutate(value = case_when(metrics =='ARE' ~ if_else(abs(value)<1,1-abs(value),0),
                              metrics %in% c('MEF','r') ~ if_else(value <0,0,value),
-                             metrics %in% c('RwMSE','AAE','AE') ~ if_else(value>1,0,1-value))) %>% 
+                             metrics %in% c('RwMSE','AAE','ARE') ~ if_else(value>1,0,1-value))) %>% 
     filter(qty %in% var) %>%
     group_by(species,metrics) %>%
     summarise(value=mean(value)) %>%
@@ -4417,18 +4455,17 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
     as.data.frame()
   
     Spp_names <- Data$species
-    Max_min <- data.frame('AE'= c(1,0),
+    Max_min <- data.frame('ARE'= c(1,0),
                           'r'= c(1,0),
                           'RwMSE'= c(1,0),
                           'MEF'=c(1,0))
     
     Data <- rbind(Max_min,Data[-1])
-  
-    names(Data) <- paste0(c(rep("I(",length(metrics))),
-                         names(Data),
-                         c(rep(")",length(metrics))))
     
     row.names(Data) <- c("max","min",Spp_names)
+    Axis_names <- paste0(c(rep("$I_{",length(metrics))),
+                         names(Data), 
+                         c(rep("}$",length(metrics))))
     
   # plotting
   fill_col <- rgb(1.0, 0.647, 0.0, 0.3)
@@ -4441,6 +4478,7 @@ plot_radar_synthesis_spp2 <- function(data,var,metrics=c("AE","RwMSE","r","MEF")
                     pfcol=c(rep("transparent",nrow(Data)-4),rep(fill_col,2)),
                     cglcol = "grey60",
                     axislabcol = "grey20",
+                    vlabels = TeX(Axis_names),
                     plty=1,
                     vlcex=5,
                     calcex=3,
